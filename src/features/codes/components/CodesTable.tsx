@@ -18,6 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { CreateCodeDialog } from './CreateCodeDialog';
+import { ExportDialog } from './ExportDialog';
 
 /**
  * Status drives the badge colour. Revoked is deliberately not styled as an
@@ -72,7 +73,10 @@ export function CodesTable() {
             Each code resolves to a destination you can change without reprinting.
           </p>
         </div>
-        <CreateCodeDialog />
+        <div className="flex gap-2">
+          <ExportDialog />
+          <CreateCodeDialog />
+        </div>
       </div>
 
       {codes.length === 0 ? (
