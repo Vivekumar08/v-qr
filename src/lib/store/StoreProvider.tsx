@@ -1,19 +1,20 @@
 'use client';
 
-import { useRef, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { makeStore, type AppStore } from './store';
+import { makeStore } from './store';
 
 /**
  * Creates the store once per client instance.
  *
- * `useRef` rather than a module constant: under React strict mode the component
- * body runs twice, and building the store inline would discard the first one
- * along with any in-flight queries.
+ * A lazy `useState` initialiser rather than a module constant: under React
+ * strict mode the component body runs twice, and building the store inline
+ * would discard the first one along with any in-flight queries. A module-level
+ * store would be worse still — it would be shared across requests on the
+ * server, leaking one visitor's cache into another's render.
  */
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const storeRef = useRef<AppStore | null>(null);
-  storeRef.current ??= makeStore();
+  const [store] = useState(makeStore);
 
-  return <Provider store={storeRef.current}>{children}</Provider>;
+  return <Provider store={store}>{children}</Provider>;
 }
