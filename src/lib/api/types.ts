@@ -67,3 +67,28 @@ export interface CreateCodeInput {
   gtin?: string;
   serial?: string;
 }
+
+/** The only two a caller may set. `revoked` and `blocked` are not transitions the console offers. */
+export type CallerSettableStatus = 'active' | 'paused';
+
+export interface DestinationList {
+  /** Newest version first. Exactly one entry is `active`. */
+  data: Destination[];
+}
+
+export type QrFormat = 'svg' | 'pdf' | 'eps';
+/** Higher levels survive more damage but need a larger code for the same content. */
+export type EccLevel = 'L' | 'M' | 'Q' | 'H';
+
+export interface QrOptions {
+  format: QrFormat;
+  ecc: EccLevel;
+  size_mm: number;
+  print_marks: boolean;
+}
+
+export interface ScanQuery {
+  /** ISO 8601. Omitted means all history. */
+  since?: string;
+  includeBots?: boolean;
+}
