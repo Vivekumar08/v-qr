@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ProofSheet, readGeometry } from './ProofSheet';
 
 /**
  * Artwork preview and download.
@@ -55,10 +56,14 @@ export function QrPanel({ codeId, shortCode }: { codeId: string; shortCode: stri
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="grid gap-6 sm:grid-cols-[minmax(0,220px)_1fr]">
-        <div className="bg-muted/30 flex aspect-square items-center justify-center rounded-lg border p-4">
-          <QrPreview data={data} error={error} isFetching={isFetching} />
-        </div>
+      <CardContent className="grid gap-6 sm:grid-cols-[minmax(0,260px)_1fr]">
+        <QrPreview
+          data={data}
+          error={error}
+          isFetching={isFetching}
+          ecc={options.ecc}
+          printMarks={options.print_marks}
+        />
 
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -155,29 +160,36 @@ function QrPreview({
   data,
   error,
   isFetching,
+  ecc,
+  printMarks,
 }: {
   data: string | undefined;
   error: unknown;
   isFetching: boolean;
+  ecc: string;
+  printMarks: boolean;
 }) {
   if (error !== undefined) {
     // Almost always a real, actionable constraint — a width below the module
-    // floor, or a palette under the contrast minimum.
+    // floor, or a palette under the contrast minimum. The API names the
+    // smallest workable width, so the message is the fix.
     const { message } = normaliseError(error);
-    return <p className="text-destructive px-2 text-center text-sm">{message}</p>;
+    return (
+      <div className="border-destructive/30 bg-destructive/5 rounded-lg border border-dashed p-6">
+        <p className="text-destructive text-sm">{message}</p>
+      </div>
+    );
   }
 
-  if (data === undefined) return <Skeleton className="h-full w-full" />;
+  if (data === undefined) return <Skeleton className="aspect-square w-full rounded-lg" />;
 
-  // Deliberately not next/image: the source is a data URL produced per render
-  // request, so there is nothing for the optimiser to cache or resize, and the
-  // SVG scales losslessly on its own.
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <ProofSheet
       src={data}
-      alt="QR code preview"
-      className={`h-full w-full object-contain transition-opacity ${isFetching ? 'opacity-50' : ''}`}
+      geometry={readGeometry(data)}
+      ecc={ecc}
+      printMarks={printMarks}
+      isRendering={isFetching}
     />
   );
 }

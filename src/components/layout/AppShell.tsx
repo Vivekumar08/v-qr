@@ -1,23 +1,50 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { SideNav } from './SideNav';
+import { ThemeToggle } from './ThemeToggle';
 
-/** Server component — no interactivity, so no client bundle cost. */
+/**
+ * Server component — the only interactive parts are the nav's active state and
+ * the theme toggle, both of which are their own client islands.
+ *
+ * A sidebar rather than a top bar: the navigation is about to hold codes,
+ * analytics, team, API keys and billing, and a horizontal bar starts hiding
+ * things at exactly the point someone is looking for them.
+ */
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-6">
-          <Link href="/codes" className="font-semibold tracking-tight">
-            qr-infra
+    <div className="flex min-h-dvh">
+      <aside className="bg-sidebar border-sidebar-border hidden w-60 shrink-0 border-r lg:flex lg:flex-col">
+        <div className="flex h-14 items-center px-5">
+          <Link href="/codes" className="font-heading text-[15px] font-bold tracking-tight">
+            qr<span className="text-primary">·</span>infra
           </Link>
-          <nav className="text-muted-foreground flex items-center gap-4 text-sm">
-            <Link href="/codes" className="hover:text-foreground transition-colors">
-              Codes
-            </Link>
-          </nav>
         </div>
-      </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">{children}</main>
+
+        <SideNav />
+
+        <div className="border-sidebar-border mt-auto border-t p-4">
+          {/* Stated plainly and permanently. It is the promise the product is
+              sold on, and the place someone checks when they are nervous. */}
+          <p className="text-muted-foreground text-[11px] leading-relaxed">
+            Printed codes resolve for as long as they exist. Destinations change;
+            the label never does.
+          </p>
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="border-border/60 flex h-14 items-center gap-4 border-b px-5 lg:px-8">
+          <Link href="/codes" className="font-heading font-bold lg:hidden">
+            qr<span className="text-primary">·</span>infra
+          </Link>
+          <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle />
+          </div>
+        </header>
+
+        <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 lg:px-8">{children}</main>
+      </div>
     </div>
   );
 }

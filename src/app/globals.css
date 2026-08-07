@@ -7,9 +7,15 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-satoshi);
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-edge: var(--paper-edge);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-success: var(--success);
+  --color-surface-raised: var(--surface-raised);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,73 +55,107 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /*
+   * Light theme. The console is dark-first, but a light option is not decoration
+   * here — anyone approving artwork for print is comparing it to paper, and a
+   * dark room is not where that decision gets made.
+   */
+  --background: #FAFAFA;
+  --foreground: #09090B;
+  --surface-raised: #FFFFFF;
+  --card: #FFFFFF;
+  --card-foreground: #09090B;
+  --popover: #FFFFFF;
+  --popover-foreground: #09090B;
+  --primary: #4F46E5;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F4F4F5;
+  --secondary-foreground: #18181B;
+  --muted: #F4F4F5;
+  --muted-foreground: #52525B;
+  --accent: #F4F4F5;
+  --accent-foreground: #18181B;
+  --accent-cyan: #0891B2;
+  --success: #16A34A;
+  --destructive: #DC2626;
+  --border: rgba(9, 9, 11, 0.10);
+  --input: rgba(9, 9, 11, 0.12);
+  --ring: #6366F1;
+
+  --chart-1: #6366F1;
+  --chart-2: #00D4FF;
+  --chart-3: #A78BFA;
+  --chart-4: #22C55E;
+  --chart-5: #F59E0B;
+
+  --radius: 1rem;
+
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #09090B;
+  --sidebar-primary: #4F46E5;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F4F4F5;
+  --sidebar-accent-foreground: #18181B;
+  --sidebar-border: rgba(9, 9, 11, 0.08);
+  --sidebar-ring: #6366F1;
+}
+
+/*
+ * The proof surface, identical in both themes and deliberately so.
+ *
+ * Artwork is judged against paper. A QR code floating on #09090B looks striking
+ * and tells the customer nothing true about what comes off the press — the
+ * quiet zone reads as part of the page instead of as ink-free margin, and a
+ * palette that looks bold on black can sit below the 4:1 contrast floor the API
+ * enforces. So this surface does not follow the theme.
+ */
+:root,
+.dark {
+  --paper: #FFFFFF;
+  --paper-ink: #0A0A0A;
+  --paper-edge: rgba(9, 9, 11, 0.14);
+  --paper-mark: rgba(9, 9, 11, 0.45);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #09090B;
+  --foreground: #FAFAFA;
+  --surface-raised: #17171A;
+  --card: #111113;
+  --card-foreground: #FAFAFA;
+  --popover: #17171A;
+  --popover-foreground: #FAFAFA;
+  --primary: #6366F1;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1C1C1F;
+  --secondary-foreground: #FAFAFA;
+  --muted: #18181B;
+  --muted-foreground: #A1A1AA;
+  --accent: #1C1C1F;
+  --accent-foreground: #FAFAFA;
+  --accent-cyan: #00D4FF;
+  --success: #22C55E;
+  --destructive: #EF4444;
+  --border: rgba(255, 255, 255, 0.06);
+  --input: rgba(255, 255, 255, 0.10);
+  --ring: #6366F1;
+
+  --chart-1: #6366F1;
+  --chart-2: #00D4FF;
+  --chart-3: #A78BFA;
+  --chart-4: #22C55E;
+  --chart-5: #F59E0B;
+
+  --sidebar: #0C0C0E;
+  --sidebar-foreground: #FAFAFA;
+  --sidebar-primary: #6366F1;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1C1C1F;
+  --sidebar-accent-foreground: #FAFAFA;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: #6366F1;
 }
+
 
 @layer base {
   * {
@@ -126,5 +166,79 @@
   }
   html {
     @apply font-sans;
+  }
+}
+@layer base {
+  body {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  h1, h2, h3, .font-heading {
+    font-family: var(--font-satoshi), var(--font-inter), sans-serif;
+    /* Satoshi's default tracking is loose at display sizes. */
+    letter-spacing: -0.02em;
+  }
+
+  /*
+   * Every number in this product is data you compare across rows: GTINs, module
+   * millimetres, scan counts, check digits. Proportional figures make columns
+   * shimmer and make two GTINs that differ in one digit look identical.
+   */
+  .font-mono, code, kbd, samp {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /*
+   * A press proof, not a preview pane.
+   *
+   * The marks are the ones a print vendor looks for: trim corners, the quiet
+   * zone as a visible ink-free margin, and the physical width. All of it is
+   * derived from the SVG the API already returns, so the panel cannot claim a
+   * dimension the file does not have.
+   */
+  .proof-sheet {
+    background: var(--paper);
+    color: var(--paper-ink);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.28),
+      0 12px 32px -12px rgba(0, 0, 0, 0.45);
+  }
+
+  .proof-mark {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-color: var(--paper-mark);
+    border-style: solid;
+    border-width: 0;
+  }
+
+  .proof-quiet-zone {
+    outline: 1px dashed color-mix(in oklch, var(--paper-mark) 55%, transparent);
+    outline-offset: 0;
+  }
+
+  /* Runs once while artwork is being rendered, then never again. */
+  @keyframes proof-scan {
+    0%   { transform: translateY(-8%); opacity: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { transform: translateY(108%); opacity: 0; }
+  }
+
+  .proof-scanline {
+    animation: proof-scan 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in oklch, var(--accent-cyan) 70%, transparent),
+      transparent
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .proof-scanline { animation: none; opacity: 0.5; }
   }
 }
