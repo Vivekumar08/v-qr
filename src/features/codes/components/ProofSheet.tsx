@@ -78,7 +78,7 @@ export function ProofSheet({
     geometry === null ? 12 : (QUIET_ZONE_MODULES / geometry.totalModules) * 100;
 
   return (
-    <figure className="space-y-3">
+    <figure className="@container space-y-3">
       <div className="proof-sheet relative rounded-lg p-7">
         <TrimMarks />
 
@@ -102,7 +102,7 @@ export function ProofSheet({
         </div>
       </div>
 
-      <figcaption className="text-muted-foreground grid grid-cols-2 gap-x-6 gap-y-1.5 font-mono text-[11px] sm:grid-cols-4">
+      <figcaption className="text-muted-foreground grid grid-cols-2 gap-x-5 gap-y-2.5 font-mono text-[11px] @lg:grid-cols-4">
         <Spec label="Width" value={geometry === null ? '—' : `${geometry.widthMm.toFixed(2)} mm`} />
         <Spec
           label="Module"
@@ -114,8 +114,8 @@ export function ProofSheet({
         />
         <Spec label="Symbol" value={geometry === null ? '—' : `${geometry.matrixModules}²`} />
         <Spec label="ECC" value={ecc} />
-        <Spec label="Quiet zone" value={`${QUIET_ZONE_MODULES} modules`} />
-        <Spec label="Colour" value="CMYK 0/0/0/100" />
+        <Spec label="Quiet" value={`${QUIET_ZONE_MODULES} modules`} />
+        <Spec label="Colour" value="K only" />
         <Spec label="Bleed" value={printMarks ? '3 mm' : 'none'} />
         <Spec label="Output" value="Vector" />
       </figcaption>
@@ -125,11 +125,15 @@ export function ProofSheet({
 
 function Spec({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-2 sm:block">
-      <span className="text-muted-foreground/70 block text-[10px] tracking-wide uppercase">
+    <div className="min-w-0">
+      <span className="text-muted-foreground/70 block text-[10px] tracking-wide whitespace-nowrap uppercase">
         {label}
       </span>
-      <span className={warn === true ? 'text-destructive' : 'text-foreground'}>{value}</span>
+      <span
+        className={`block whitespace-nowrap ${warn === true ? 'text-destructive' : 'text-foreground'}`}
+      >
+        {value}
+      </span>
     </div>
   );
 }
