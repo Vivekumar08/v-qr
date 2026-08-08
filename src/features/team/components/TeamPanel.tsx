@@ -29,10 +29,11 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 
+/** What each role can do, shown against the row it applies to. */
 const ROLE_MEANING: Record<Role, string> = {
-  owner: 'Everything, including billing and ownership transfer.',
-  admin: 'Codes, destinations, API keys and invitations.',
-  member: 'Codes and destinations.',
+  owner: 'Everything, including billing and ownership transfer',
+  admin: 'Codes, destinations, API keys and invitations',
+  member: 'Codes and destinations',
 };
 
 export function TeamPanel() {
@@ -57,7 +58,11 @@ export function TeamPanel() {
       <Card>
         <CardHeader>
           <CardTitle>Members</CardTitle>
-          <CardDescription>{ROLE_MEANING[myRole]}</CardDescription>
+          <CardDescription>
+            {/* Whose permissions these are was ambiguous when this described
+                the viewer's own role; it now describes the list. */}
+            {members?.data.length ?? 0} in this organisation.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading ? (
@@ -234,6 +239,9 @@ function MemberRow({
           {isSelf && <span className="text-muted-foreground text-xs"> · you</span>}
         </p>
         <p className="text-muted-foreground truncate text-xs">{member.email}</p>
+        <p className="text-muted-foreground/70 mt-0.5 truncate text-[11px]">
+          {ROLE_MEANING[member.role]}
+        </p>
       </div>
 
       {member.role === 'owner' || !canManage ? (
