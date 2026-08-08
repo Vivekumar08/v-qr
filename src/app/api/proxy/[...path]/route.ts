@@ -1,20 +1,22 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import {
+  clearSessionCookies,
+  originAllowed,
+  readTokens,
+  setSessionCookies,
+  type TokenPair,
+} from '@/lib/auth/cookies';
 
 /**
  * Server-side proxy to the qr-infra API.
  *
- * The browser never sees the API key. Anything in `NEXT_PUBLIC_*` is compiled
- * into the client bundle, so a key with `codes:write` placed there is a key any
- * visitor can lift from devtools and use to create or revoke codes — and a
- * revoked code is a printed label that stops working.
- *
- * This is a deliberate stand-in for real user sessions. Every request currently
- * uses one tenant's key; once the console has authentication, the key is chosen
- * per session here rather than anywhere in the client.
+ * The browser holds its credentials in httpOnly cookies it cannot read; this
+ * route turns them into an Authorization header. An XSS in the console can
+ * therefore make requests as the user, but cannot walk away with a 30-day
+ * refresh token to use later or elsewhere.
  */
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://127.0.0.1:8787';
-const API_KEY = process.env.QR_INFRA_API_KEY;
 
 /** Forwarded verbatim to the API; anything else is dropped. */
 const FORWARD_REQUEST_HEADERS = ['content-type', 'idempotency-key'];
@@ -30,51 +32,72 @@ const FORWARD_RESPONSE_HEADERS = [
   'retry-after',
 ];
 
+const responseHeaders = (upstream: Response): Headers => {
+  const headers = new Headers();
+  for (const name of FORWARD_RESPONSE_HEADERS) {
+    const value = upstream.headers.get(name);
+    if (value !== null) headers.set(name, value);
+  }
+  return headers;
+};
+
+const notSignedIn = (): NextResponse =>
+  NextResponse.json(
+    {
+      error: {
+        type: 'authentication',
+        code: 'not_signed_in',
+        message: 'Sign in to continue.',
+        request_id: 'proxy',
+      },
+    },
+    { status: 401 },
+  );
+
 const proxy = async (
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> },
 ): Promise<Response> => {
-  if (API_KEY === undefined || API_KEY === '') {
-    // Loud and specific: a blank page because of a missing env var wastes far
-    // more time than an explicit error.
-    return NextResponse.json(
-      {
-        error: {
-          type: 'server_error',
-          code: 'api_key_not_configured',
-          message: 'QR_INFRA_API_KEY is not set. Copy .env.example to .env.local and fill it in.',
-          request_id: 'proxy',
-        },
-      },
-      { status: 500 },
-    );
+  if (!originAllowed(request)) {
+    return NextResponse.json({ error: { code: 'bad_origin' } }, { status: 403 });
   }
+
+  const { access, refresh } = readTokens(request);
+  if (access === undefined && refresh === undefined) return notSignedIn();
 
   // Next 16 makes route params async.
   const { path } = await context.params;
-  const search = request.nextUrl.search;
-  const target = `${API_BASE_URL}/${path.join('/')}${search}`;
+  const target = `${API_BASE_URL}/${path.join('/')}${request.nextUrl.search}`;
 
-  const headers = new Headers({ authorization: `Bearer ${API_KEY}` });
+  const baseHeaders = new Headers();
   for (const name of FORWARD_REQUEST_HEADERS) {
     const value = request.headers.get(name);
-    if (value !== null) headers.set(name, value);
+    if (value !== null) baseHeaders.set(name, value);
   }
+
+  // Read once: the body cannot be streamed twice, and a 401 retry needs it again.
+  const body =
+    request.method === 'GET' || request.method === 'HEAD'
+      ? undefined
+      : await request.arrayBuffer();
+
+  const attempt = async (token: string): Promise<Response> => {
+    const headers = new Headers(baseHeaders);
+    headers.set('authorization', `Bearer ${token}`);
+
+    return fetch(target, {
+      method: request.method,
+      headers,
+      ...(body === undefined ? {} : { body }),
+      // The console shows live state; a cached response would show a revoked
+      // code as still active.
+      cache: 'no-store',
+    });
+  };
 
   let upstream: Response;
   try {
-    upstream = await fetch(target, {
-      method: request.method,
-      headers,
-      // GET and HEAD must not carry a body, and duplex is required when one is
-      // streamed through.
-      ...(request.method === 'GET' || request.method === 'HEAD'
-        ? {}
-        : { body: request.body, duplex: 'half' as const }),
-      // The console shows live state; a cached proxy response would show a
-      // revoked code as still active.
-      cache: 'no-store',
-    });
+    upstream = access === undefined ? new Response(null, { status: 401 }) : await attempt(access);
   } catch {
     return NextResponse.json(
       {
@@ -89,16 +112,49 @@ const proxy = async (
     );
   }
 
-  const responseHeaders = new Headers();
-  for (const name of FORWARD_RESPONSE_HEADERS) {
-    const value = upstream.headers.get(name);
-    if (value !== null) responseHeaders.set(name, value);
+  /**
+   * Exactly one refresh, exactly one retry.
+   *
+   * A loop would turn an expired refresh token into an infinite request storm
+   * against the API, from every open tab at once. If the retry also fails, the
+   * session is genuinely over and the client is told.
+   */
+  if (upstream.status === 401 && refresh !== undefined) {
+    const refreshed = await fetch(`${API_BASE_URL}/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refresh }),
+      cache: 'no-store',
+    }).catch(() => null);
+
+    if (refreshed !== null && refreshed.ok) {
+      const { tokens } = (await refreshed.json()) as { tokens: TokenPair };
+      const retried = await attempt(tokens.access_token);
+
+      // NextResponse, not Response: it carries the same streamed body and is
+      // the only one of the two with a cookie jar. Casting a plain Response
+      // here type-checks and throws at runtime on every refresh.
+      const response = new NextResponse(retried.body, {
+        status: retried.status,
+        headers: responseHeaders(retried),
+      });
+
+      // The rotated refresh token must be persisted. Presenting the old one on
+      // the next request is a replay, which the API's reuse detection reads as
+      // theft and answers by revoking the whole family.
+      setSessionCookies(response, tokens);
+      return response;
+    }
+
+    const dead = notSignedIn();
+    clearSessionCookies(dead);
+    return dead;
   }
 
-  // Streamed straight through, so a large export is not buffered here.
-  return new Response(upstream.body, {
+  // Streamed straight through, so a large export is never buffered here.
+  return new NextResponse(upstream.body, {
     status: upstream.status,
-    headers: responseHeaders,
+    headers: responseHeaders(upstream),
   });
 };
 
