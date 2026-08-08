@@ -11,7 +11,14 @@ import {
 } from '@/lib/api/qrUrl';
 import type { QrOptions } from '@/lib/api/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -21,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CopyButton } from '@/components/ui/copy-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProofSheet, readGeometry } from './ProofSheet';
 
@@ -32,7 +40,15 @@ import { ProofSheet, readGeometry } from './ProofSheet';
  * a browser renders. What changes with format is the colour space, which a
  * screen cannot show honestly anyway.
  */
-export function QrPanel({ codeId, shortCode }: { codeId: string; shortCode: string }) {
+export function QrPanel({
+  codeId,
+  shortCode,
+  scanUrl,
+}: {
+  codeId: string;
+  shortCode: string;
+  scanUrl: string;
+}) {
   const [options, setOptions] = useState<QrOptions>(DEFAULT_QR_OPTIONS);
 
   // Debouncing the size would only delay a render that already takes
@@ -54,6 +70,9 @@ export function QrPanel({ codeId, shortCode }: { codeId: string; shortCode: stri
         <CardDescription>
           Encodes the scan URL, not the destination — so the file stays valid after a repoint.
         </CardDescription>
+        <CardAction>
+          <CopyButton value={scanUrl} label="Copy link" variant="outline" />
+        </CardAction>
       </CardHeader>
 
       <CardContent className="grid gap-6 sm:grid-cols-[minmax(0,260px)_1fr]">

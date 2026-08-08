@@ -21,6 +21,12 @@ export interface Destination {
 export interface Code {
   id: string;
   short_code: string;
+  /**
+   * What the QR encodes, and what is printed. Comes from the API rather than
+   * being composed here: a tenant on a custom domain resolves there, and a
+   * locally-built `{slug}.{domain}` would be a URL on none of their labels.
+   */
+  scan_url: string;
   gtin: string | null;
   serial: string | null;
   status: CodeStatus;

@@ -50,3 +50,29 @@ describe('proof geometry', () => {
     expect(readGeometry('data:image/svg+xml;utf8,%E0%A4%A')).toBeNull();
   });
 });
+
+/**
+ * The console never composes a scan URL.
+ *
+ * A tenant on a custom domain resolves there, and a locally-built
+ * `{slug}.{resolverDomain}` would be a URL on none of their labels — the exact
+ * bug the renderer already shipped once.
+ */
+describe('scan URLs come from the API', () => {
+  it('nothing in the codes feature builds one from a slug', async () => {
+    const { readFile, readdir } = await import('node:fs/promises');
+    const dir = new URL('../', import.meta.url);
+
+    const files = (await readdir(dir)).filter((f) => f.endsWith('.tsx'));
+    const sources = await Promise.all(
+      files.map(async (f) => readFile(new URL(f, dir), 'utf8')),
+    );
+
+    for (const [index, source] of sources.entries()) {
+      // A template literal joining a slug to a resolver domain is the shape of
+      // the mistake; `scan_url` from the API is the correct source.
+      expect(source, files[index]).not.toMatch(/\$\{[^}]*slug[^}]*\}\.\$\{/);
+      expect(source, files[index]).not.toContain('resolverDomain}/r/');
+    }
+  });
+});

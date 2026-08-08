@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { CopyButton } from '@/components/ui/copy-button';
 import { CreateCodeDialog } from './CreateCodeDialog';
 import { ExportDialog } from './ExportDialog';
 
@@ -184,6 +185,7 @@ function CodeRow({ code }: { code: Code }) {
         <Badge variant={STATUS_VARIANT[code.status]}>{code.status}</Badge>
       </TableCell>
       <TableCell className="text-right">
+        <CopyButton value={code.scan_url} label="Copy" />
         <Button
           variant="ghost"
           size="sm"

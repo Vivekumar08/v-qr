@@ -11,6 +11,7 @@ import { normaliseError } from '@/lib/api/errors';
 import type { Code, CodeStatus } from '@/lib/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DestinationPanel } from './DestinationPanel';
 import { QrPanel } from './QrPanel';
@@ -65,7 +66,7 @@ export function CodeDetail({ codeId }: { codeId: string }) {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <DestinationPanel codeId={code.id} revoked={code.status === 'revoked'} />
-        <QrPanel codeId={code.id} shortCode={code.short_code} />
+        <QrPanel codeId={code.id} shortCode={code.short_code} scanUrl={code.scan_url} />
       </div>
 
       <ScanPanel codeId={code.id} />
@@ -114,6 +115,13 @@ function Header({ code }: { code: Code }) {
             <Badge variant={STATUS_VARIANT[code.status]}>{code.status}</Badge>
           </div>
           <p className="text-muted-foreground text-sm">{STATUS_MEANING[code.status]}</p>
+
+          <div className="flex items-center gap-1.5 pt-1">
+            <code className="text-muted-foreground max-w-full truncate font-mono text-xs">
+              {code.scan_url}
+            </code>
+            <CopyButton value={code.scan_url} label="Copy link" />
+          </div>
         </div>
 
         <div className="flex gap-2">
