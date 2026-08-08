@@ -7,9 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+/** Why an OAuth attempt bounced back here. Anything else stays silent. */
+const OAUTH_ERRORS: Record<string, string> = {
+  oauth: 'Google sign-in did not complete. Try again.',
+  oauth_cancelled: 'Google sign-in was cancelled.',
+  oauth_expired: 'That sign-in link expired. Try again.',
+  unreachable: 'Could not reach the server. Try again in a moment.',
+};
+
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
+  const oauthError = OAUTH_ERRORS[params.get('error') ?? ''];
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +85,9 @@ export function LoginForm() {
         />
       </div>
 
-      {error !== null && <p className="text-destructive text-sm">{error}</p>}
+      {(error ?? oauthError) !== undefined && (error ?? oauthError) !== null && (
+        <p className="text-destructive text-sm">{error ?? oauthError}</p>
+      )}
 
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? 'Signing in…' : 'Sign in'}
