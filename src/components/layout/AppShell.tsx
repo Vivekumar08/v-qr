@@ -2,6 +2,9 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { SideNav } from './SideNav';
 import { ThemeToggle } from './ThemeToggle';
+import { TenantSwitcher } from '@/features/team/components/TenantSwitcher';
+import { UserMenu } from '@/features/auth/components/UserMenu';
+import { VerifyBanner } from '@/features/auth/components/VerifyBanner';
 
 /**
  * Server component — the only interactive parts are the nav's active state and
@@ -34,14 +37,18 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-border/60 flex h-14 items-center gap-4 border-b px-5 lg:px-8">
+        <header className="border-border/60 flex h-14 items-center gap-3 border-b px-5 lg:px-8">
           <Link href="/codes" className="font-heading font-bold lg:hidden">
             qr<span className="text-primary">·</span>infra
           </Link>
-          <div className="ml-auto flex items-center gap-2">
+          <TenantSwitcher />
+          <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
+            <UserMenu />
           </div>
         </header>
+
+        <VerifyBanner />
 
         <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 lg:px-8">{children}</main>
       </div>

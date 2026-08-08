@@ -7,16 +7,15 @@ import { QrCode, BarChart3, KeyRound, Users } from 'lucide-react';
 /**
  * The active item is marked by a filled pill, not an underline.
  *
- * `Analytics`, `Team` and `API keys` are shown but disabled: they arrive with
- * identity and billing. Hiding them would make the console look finished and
- * leave someone hunting for a feature that is coming; showing them greyed says
- * what this is.
+ * `Analytics` is shown but disabled: it arrives with plans and metering.
+ * Hiding it would make the console look finished and leave someone hunting for
+ * a feature that is coming; showing it greyed says what this is.
  */
 const ITEMS = [
   { href: '/codes', label: 'Codes', icon: QrCode, ready: true },
+  { href: '/settings/team', label: 'Team', icon: Users, ready: true },
+  { href: '/settings/api-keys', label: 'API keys', icon: KeyRound, ready: true },
   { href: '/analytics', label: 'Analytics', icon: BarChart3, ready: false },
-  { href: '/settings/team', label: 'Team', icon: Users, ready: false },
-  { href: '/settings/api-keys', label: 'API keys', icon: KeyRound, ready: false },
 ] as const;
 
 export function SideNav() {

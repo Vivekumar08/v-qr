@@ -108,3 +108,35 @@ export interface Me {
     tenant: { id: string; slug: string; name: string };
   }[];
 }
+
+export type Role = 'owner' | 'admin' | 'member';
+
+export interface Member {
+  user_id: string;
+  email: string;
+  name: string;
+  role: Role;
+  joined_at: string;
+}
+
+export interface Invite {
+  id: string;
+  email: string;
+  role: Role;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface ApiKeySummary {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  last_used_at: string | null;
+  created_at: string;
+}
+
+/** Only ever returned once, at creation. */
+export interface CreatedApiKey extends ApiKeySummary {
+  key: string;
+}

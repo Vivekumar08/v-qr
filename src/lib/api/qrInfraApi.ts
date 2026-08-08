@@ -7,7 +7,12 @@ import type {
   DestinationList,
   QrOptions,
   ScanQuery,
+  ApiKeySummary,
+  CreatedApiKey,
+  Invite,
   Me,
+  Member,
+  Role,
   ScanSummary,
 } from './types';
 import { qrQueryString } from './qrUrl';
@@ -26,12 +31,76 @@ export const qrInfraApi = createApi({
 
   // `Codes` is the list; individual entries are tagged by id so revoking one
   // code refetches that code and the list, not every query in the cache.
-  tagTypes: ['Codes', 'Code', 'Scans', 'Destinations', 'Me'],
+  tagTypes: ['Codes', 'Code', 'Scans', 'Destinations', 'Me', 'Members', 'Invites', 'ApiKeys'],
 
   endpoints: (builder) => ({
     me: builder.query<Me, void>({
       query: () => '/v1/auth/me',
       providesTags: ['Me'],
+    }),
+
+    listMembers: builder.query<{ data: Member[] }, void>({
+      query: () => '/v1/members',
+      providesTags: ['Members'],
+    }),
+
+    changeMemberRole: builder.mutation<unknown, { userId: string; role: Role }>({
+      query: ({ userId, role }) => ({
+        url: `/v1/members/${userId}`,
+        method: 'PATCH',
+        body: { role },
+      }),
+      invalidatesTags: ['Members'],
+    }),
+
+    removeMember: builder.mutation<unknown, string>({
+      query: (userId) => ({ url: `/v1/members/${userId}`, method: 'DELETE' }),
+      invalidatesTags: ['Members'],
+    }),
+
+    transferOwnership: builder.mutation<unknown, string>({
+      query: (userId) => ({
+        url: '/v1/members/transfer-ownership',
+        method: 'POST',
+        body: { user_id: userId },
+      }),
+      // Both change: the caller stops being owner as the target starts.
+      invalidatesTags: ['Members', 'Me'],
+    }),
+
+    listInvites: builder.query<{ data: Invite[] }, void>({
+      query: () => '/v1/invites',
+      providesTags: ['Invites'],
+    }),
+
+    createInvite: builder.mutation<{ invite: Invite; link: string }, { email: string; role: Role }>({
+      query: (body) => ({
+        url: '/v1/invites',
+        method: 'POST',
+        body,
+        headers: { 'idempotency-key': crypto.randomUUID() },
+      }),
+      invalidatesTags: ['Invites'],
+    }),
+
+    revokeInvite: builder.mutation<unknown, string>({
+      query: (id) => ({ url: `/v1/invites/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Invites'],
+    }),
+
+    listApiKeys: builder.query<{ data: ApiKeySummary[] }, void>({
+      query: () => '/v1/api-keys',
+      providesTags: ['ApiKeys'],
+    }),
+
+    createApiKey: builder.mutation<CreatedApiKey, { name: string; scopes: string[] }>({
+      query: (body) => ({ url: '/v1/api-keys', method: 'POST', body }),
+      invalidatesTags: ['ApiKeys'],
+    }),
+
+    revokeApiKey: builder.mutation<unknown, string>({
+      query: (id) => ({ url: `/v1/api-keys/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['ApiKeys'],
     }),
 
     listCodes: builder.query<CodeList, { limit?: number; cursor?: string; status?: string }>({
@@ -148,6 +217,16 @@ export const qrInfraApi = createApi({
 
 export const {
   useMeQuery,
+  useListMembersQuery,
+  useChangeMemberRoleMutation,
+  useRemoveMemberMutation,
+  useTransferOwnershipMutation,
+  useListInvitesQuery,
+  useCreateInviteMutation,
+  useRevokeInviteMutation,
+  useListApiKeysQuery,
+  useCreateApiKeyMutation,
+  useRevokeApiKeyMutation,
   useListCodesQuery,
   useGetCodeQuery,
   useGetScanSummaryQuery,
