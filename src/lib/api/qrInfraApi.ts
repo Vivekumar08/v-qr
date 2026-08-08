@@ -7,6 +7,7 @@ import type {
   DestinationList,
   QrOptions,
   ScanQuery,
+  Me,
   ScanSummary,
 } from './types';
 import { qrQueryString } from './qrUrl';
@@ -25,9 +26,14 @@ export const qrInfraApi = createApi({
 
   // `Codes` is the list; individual entries are tagged by id so revoking one
   // code refetches that code and the list, not every query in the cache.
-  tagTypes: ['Codes', 'Code', 'Scans', 'Destinations'],
+  tagTypes: ['Codes', 'Code', 'Scans', 'Destinations', 'Me'],
 
   endpoints: (builder) => ({
+    me: builder.query<Me, void>({
+      query: () => '/v1/auth/me',
+      providesTags: ['Me'],
+    }),
+
     listCodes: builder.query<CodeList, { limit?: number; cursor?: string; status?: string }>({
       query: ({ limit = 25, cursor, status }) => ({
         url: '/v1/codes',
@@ -141,6 +147,7 @@ export const qrInfraApi = createApi({
 });
 
 export const {
+  useMeQuery,
   useListCodesQuery,
   useGetCodeQuery,
   useGetScanSummaryQuery,

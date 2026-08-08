@@ -92,3 +92,19 @@ export interface ScanQuery {
   since?: string;
   includeBots?: boolean;
 }
+
+export interface Me {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    avatar_url: string | null;
+    email_verified: boolean;
+    created_at: string;
+  };
+  active_tenant_id: string | null;
+  memberships: {
+    role: 'owner' | 'admin' | 'member';
+    tenant: { id: string; slug: string; name: string };
+  }[];
+}
