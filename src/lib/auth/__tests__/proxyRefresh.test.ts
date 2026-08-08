@@ -119,3 +119,80 @@ describe('proxy refresh', () => {
     expect(calls).toHaveLength(2);
   });
 });
+
+/**
+ * Paths reachable without a session.
+ *
+ * These exist because the proxy once demanded a credential for every request,
+ * which made password reset, email verification and Google sign-in unreachable
+ * from the console while all three worked when called directly. Nothing in the
+ * unit or API suites could see it: one mocks fetch, the other skips the proxy.
+ */
+describe('unauthenticated paths', () => {
+  const callPath = (segments: string[], cookie = '') =>
+    GET(
+      new NextRequest(`http://localhost:3000/api/proxy/${segments.join('/')}`, {
+        headers: cookie === '' ? {} : { cookie },
+      }),
+      { params: Promise.resolve({ path: segments }) },
+    );
+
+  it('forwards password reset and verification without a session', async () => {
+    const seen: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        seen.push(url);
+        return new Response('{}', { status: 202 });
+      }),
+    );
+
+    for (const path of [
+      ['v1', 'auth', 'password', 'forgot'],
+      ['v1', 'auth', 'password', 'reset'],
+      ['v1', 'auth', 'email', 'verify'],
+      ['v1', 'auth', 'google', 'start'],
+    ]) {
+      const response = await callPath(path);
+      expect(response.status, path.join('/')).toBe(202);
+    }
+
+    expect(seen).toHaveLength(4);
+  });
+
+  it('passes Google redirect back to the browser rather than following it', async () => {
+    // Following it server-side would fetch accounts.google.com and hand the
+    // browser HTML instead of a redirect it can act on.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(null, {
+            status: 302,
+            headers: { location: 'https://accounts.google.com/o/oauth2/v2/auth?x=1' },
+          }),
+      ),
+    );
+
+    const response = await callPath(['v1', 'auth', 'google', 'start']);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toContain('accounts.google.com');
+  });
+
+  it('still demands a session for everything else', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Exact matches only — a `v1/auth/` prefix rule would also open /me.
+    for (const path of [
+      ['v1', 'auth', 'me'],
+      ['v1', 'codes'],
+      ['v1', 'members'],
+    ]) {
+      expect((await callPath(path)).status, path.join('/')).toBe(401);
+    }
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

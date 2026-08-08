@@ -23,6 +23,8 @@ const FORWARD_REQUEST_HEADERS = ['content-type', 'idempotency-key'];
 
 /** Returned to the browser. The rest is noise or leaks upstream detail. */
 const FORWARD_RESPONSE_HEADERS = [
+  // Carries the Google authorization URL on /v1/auth/google/start.
+  'location',
   'content-type',
   'content-disposition',
   'x-request-id',
@@ -40,6 +42,25 @@ const responseHeaders = (upstream: Response): Headers => {
   }
   return headers;
 };
+
+/**
+ * Paths that legitimately have no session, matched exactly.
+ *
+ * Every one of these is something a person does *because* they cannot sign in:
+ * they forgot their password, they are following a link from their mail, or
+ * they are starting an OAuth flow. Requiring a credential here makes password
+ * reset and Google sign-in unreachable from the console while both work
+ * perfectly when called directly — a failure no amount of API testing finds.
+ *
+ * Exact matches, never prefixes: `v1/auth/` as a prefix would also expose
+ * `/v1/auth/me`, which very much does need a session.
+ */
+const UNAUTHENTICATED_PATHS = new Set([
+  'v1/auth/password/forgot',
+  'v1/auth/password/reset',
+  'v1/auth/email/verify',
+  'v1/auth/google/start',
+]);
 
 const notSignedIn = (): NextResponse =>
   NextResponse.json(
@@ -62,12 +83,15 @@ const proxy = async (
     return NextResponse.json({ error: { code: 'bad_origin' } }, { status: 403 });
   }
 
-  const { access, refresh } = readTokens(request);
-  if (access === undefined && refresh === undefined) return notSignedIn();
-
   // Next 16 makes route params async.
   const { path } = await context.params;
-  const target = `${API_BASE_URL}/${path.join('/')}${request.nextUrl.search}`;
+  const joined = path.join('/');
+  const target = `${API_BASE_URL}/${joined}${request.nextUrl.search}`;
+
+  const { access, refresh } = readTokens(request);
+  const needsSession = !UNAUTHENTICATED_PATHS.has(joined);
+
+  if (needsSession && access === undefined && refresh === undefined) return notSignedIn();
 
   const baseHeaders = new Headers();
   for (const name of FORWARD_REQUEST_HEADERS) {
@@ -81,9 +105,11 @@ const proxy = async (
       ? undefined
       : await request.arrayBuffer();
 
-  const attempt = async (token: string): Promise<Response> => {
+  const attempt = async (token: string | undefined): Promise<Response> => {
     const headers = new Headers(baseHeaders);
-    headers.set('authorization', `Bearer ${token}`);
+    // Sent when we have one even on an open path: the API ignores it there,
+    // and omitting it would break a signed-in user verifying their own email.
+    if (token !== undefined) headers.set('authorization', `Bearer ${token}`);
 
     return fetch(target, {
       method: request.method,
@@ -92,12 +118,19 @@ const proxy = async (
       // The console shows live state; a cached response would show a revoked
       // code as still active.
       cache: 'no-store',
+      // Google's start endpoint answers 302; following it here would fetch
+      // accounts.google.com server-side and hand the browser HTML instead of
+      // a redirect it can act on.
+      redirect: 'manual',
     });
   };
 
   let upstream: Response;
   try {
-    upstream = access === undefined ? new Response(null, { status: 401 }) : await attempt(access);
+    upstream =
+      access === undefined && needsSession
+        ? new Response(null, { status: 401 })
+        : await attempt(access);
   } catch {
     return NextResponse.json(
       {
@@ -119,7 +152,8 @@ const proxy = async (
    * against the API, from every open tab at once. If the retry also fails, the
    * session is genuinely over and the client is told.
    */
-  if (upstream.status === 401 && refresh !== undefined) {
+  // Only worth refreshing when a session was expected in the first place.
+  if (needsSession && upstream.status === 401 && refresh !== undefined) {
     const refreshed = await fetch(`${API_BASE_URL}/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
