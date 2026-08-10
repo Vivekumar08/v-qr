@@ -24,6 +24,30 @@ export function CreateTenantForm({ resolverDomain }: { resolverDomain: string })
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /**
+   * Puts a session that has no tenant into one the person already belongs to.
+   *
+   * Reachable two ways: a double submit, and an organisation being removed
+   * underneath a live session. Both leave a real account with memberships and
+   * no active tenant, which every tenant-scoped route refuses.
+   */
+  const enterExistingOrganisation = async (): Promise<void> => {
+    const me = await fetch('/api/proxy/v1/auth/me').then((r) => (r.ok ? r.json() : null));
+    const first = (me as { memberships?: { tenant: { id: string } }[] } | null)?.memberships?.[0];
+
+    if (first === undefined) {
+      setError('Could not find your organisation. Sign in again.');
+      return;
+    }
+
+    const switched = await postAuth('switch', { tenant_id: first.tenant.id });
+    if (!switched.ok) {
+      setError('Could not open your organisation. Sign in again.');
+      return;
+    }
+    router.replace('/codes');
+  };
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     // Guard the handler, not just the button. `busy` reaches the button on the
@@ -58,11 +82,13 @@ export function CreateTenantForm({ resolverDomain }: { resolverDomain: string })
       if (code === 'already_owns_organisation') {
         /**
          * Almost always a double submit — two organisations called the same
-         * thing appeared in production 24 seconds apart this way. The person
-         * has an organisation; send them to it rather than showing an error
-         * for something that already succeeded.
+         * thing appeared in production 24 seconds apart this way.
+         *
+         * Switching first, not just navigating: the session has no tenant
+         * claim, so /codes would answer no_active_tenant and strand the person
+         * on an error page for something that had already succeeded.
          */
-        router.replace('/codes');
+        await enterExistingOrganisation();
         return;
       }
 
