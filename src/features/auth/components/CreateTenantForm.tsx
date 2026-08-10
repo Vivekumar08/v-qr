@@ -26,6 +26,9 @@ export function CreateTenantForm({ resolverDomain }: { resolverDomain: string })
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    // Guard the handler, not just the button. `busy` reaches the button on the
+    // next render, which is one paint too late for a double tap.
+    if (busy) return;
     setBusy(true);
     setError(null);
 
@@ -42,11 +45,28 @@ export function CreateTenantForm({ resolverDomain }: { resolverDomain: string })
 
     if (!created.ok || payload.tenant === undefined) {
       setBusy(false);
-      setError(
-        payload.error?.code === 'slug_taken'
-          ? `${slug} is taken. Pick another address.`
-          : (payload.error?.message ?? 'Could not create the organisation.'),
-      );
+
+      const code = payload.error?.code;
+      if (code === 'slug_taken') {
+        setError(`${slug} is taken. Pick another address.`);
+        return;
+      }
+      if (code === 'org_name_taken') {
+        setError(`An organisation called ${orgName} already exists.`);
+        return;
+      }
+      if (code === 'already_owns_organisation') {
+        /**
+         * Almost always a double submit — two organisations called the same
+         * thing appeared in production 24 seconds apart this way. The person
+         * has an organisation; send them to it rather than showing an error
+         * for something that already succeeded.
+         */
+        router.replace('/codes');
+        return;
+      }
+
+      setError(payload.error?.message ?? 'Could not create the organisation.');
       return;
     }
 
