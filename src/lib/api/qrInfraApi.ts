@@ -1,5 +1,8 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type {
+  AdminCode,
+  AdminTenant,
+  AuditEntry,
   CallerSettableStatus,
   Code,
   CodeList,
@@ -14,6 +17,7 @@ import type {
   Member,
   Role,
   ScanSummary,
+  TenantPlan,
 } from './types';
 import { qrQueryString } from './qrUrl';
 
@@ -31,7 +35,20 @@ export const qrInfraApi = createApi({
 
   // `Codes` is the list; individual entries are tagged by id so revoking one
   // code refetches that code and the list, not every query in the cache.
-  tagTypes: ['Codes', 'Code', 'Scans', 'Destinations', 'Me', 'Members', 'Invites', 'ApiKeys'],
+  tagTypes: [
+    'Codes',
+    'Code',
+    'Scans',
+    'Destinations',
+    'Me',
+    'Members',
+    'Invites',
+    'ApiKeys',
+    'AdminTenants',
+    'AdminTenant',
+    'AdminCodes',
+    'AdminAudit',
+  ],
 
   endpoints: (builder) => ({
     me: builder.query<Me, void>({
@@ -212,6 +229,116 @@ export const qrInfraApi = createApi({
         { type: 'Codes', id: 'LIST' },
       ],
     }),
+
+    /* ---------------------------------------------------------------- *
+     * Operator surface.
+     *
+     * Every read below is itself recorded in the audit log server-side, so
+     * these are not free calls to make casually — refetching a tenant list
+     * writes a `tenants.list` entry each time. That is why none of them poll.
+     * ---------------------------------------------------------------- */
+
+    listAdminTenants: builder.query<{ data: AdminTenant[] }, { search?: string } | void>({
+      query: (args) => ({
+        url: '/v1/admin/tenants',
+        params: {
+          limit: 200,
+          ...(args?.search === undefined || args.search === '' ? {} : { search: args.search }),
+        },
+      }),
+      providesTags: ['AdminTenants'],
+    }),
+
+    getAdminTenant: builder.query<AdminTenant, string>({
+      query: (tenantId) => `/v1/admin/tenants/${tenantId}`,
+      providesTags: (_result, _error, tenantId) => [{ type: 'AdminTenant', id: tenantId }],
+    }),
+
+    listAdminTenantCodes: builder.query<
+      { data: AdminCode[]; has_more: boolean },
+      { tenantId: string; limit?: number }
+    >({
+      query: ({ tenantId, limit = 25 }) => ({
+        url: `/v1/admin/tenants/${tenantId}/codes`,
+        params: { limit },
+      }),
+      providesTags: (_result, _error, { tenantId }) => [{ type: 'AdminCodes', id: tenantId }],
+    }),
+
+    listAudit: builder.query<{ data: AuditEntry[] }, { tenantId?: string; limit?: number } | void>({
+      query: (args) => ({
+        url: '/v1/admin/audit',
+        params: {
+          limit: args?.limit ?? 100,
+          ...(args?.tenantId === undefined ? {} : { tenant_id: args.tenantId }),
+        },
+      }),
+      providesTags: ['AdminAudit'],
+    }),
+
+    /**
+     * The operator actions.
+     *
+     * Each takes a reason the API enforces a minimum length on, and each writes
+     * an audit entry — hence `AdminAudit` in every invalidation. Blocking a code
+     * also moves the tenant's active count, so the overview is refetched too.
+     */
+    blockCode: builder.mutation<void, { codeId: string; tenantId: string; reason: string }>({
+      query: ({ codeId, reason }) => ({
+        url: `/v1/admin/codes/${codeId}/block`,
+        method: 'POST',
+        body: { reason },
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'AdminCodes', id: tenantId },
+        { type: 'AdminTenant', id: tenantId },
+        'AdminTenants',
+        'AdminAudit',
+      ],
+    }),
+
+    unblockCode: builder.mutation<void, { codeId: string; tenantId: string; reason: string }>({
+      query: ({ codeId, reason }) => ({
+        url: `/v1/admin/codes/${codeId}/unblock`,
+        method: 'POST',
+        body: { reason },
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'AdminCodes', id: tenantId },
+        { type: 'AdminTenant', id: tenantId },
+        'AdminTenants',
+        'AdminAudit',
+      ],
+    }),
+
+    setTenantSuspension: builder.mutation<
+      void,
+      { tenantId: string; suspended: boolean; reason: string }
+    >({
+      query: ({ tenantId, suspended, reason }) => ({
+        url: `/v1/admin/tenants/${tenantId}/suspension`,
+        method: 'POST',
+        body: { suspended, reason },
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'AdminTenant', id: tenantId },
+        'AdminTenants',
+        'AdminAudit',
+      ],
+    }),
+
+    setTenantPlan: builder.mutation<void, { tenantId: string; plan: TenantPlan; reason: string }>({
+      query: ({ tenantId, plan, reason }) => ({
+        url: `/v1/admin/tenants/${tenantId}/plan`,
+        method: 'POST',
+        body: { plan, reason },
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'AdminTenant', id: tenantId },
+        'AdminTenants',
+        'AdminAudit',
+      ],
+    }),
   }),
 });
 
@@ -236,4 +363,12 @@ export const {
   useRevokeCodeMutation,
   useUpdateCodeStatusMutation,
   useAddDestinationMutation,
+  useListAdminTenantsQuery,
+  useGetAdminTenantQuery,
+  useListAdminTenantCodesQuery,
+  useListAuditQuery,
+  useBlockCodeMutation,
+  useUnblockCodeMutation,
+  useSetTenantSuspensionMutation,
+  useSetTenantPlanMutation,
 } = qrInfraApi;

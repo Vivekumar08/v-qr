@@ -109,6 +109,13 @@ export interface Me {
     created_at: string;
   };
   active_tenant_id: string | null;
+  /**
+   * Whether to offer the operator navigation. Nothing more.
+   *
+   * Every `/v1/admin` route re-checks the allow-list and answers 404 to anyone
+   * not on it, so this is safe to trust for rendering and worthless to forge.
+   */
+  is_super_admin: boolean;
   memberships: {
     role: 'owner' | 'admin' | 'member';
     tenant: { id: string; slug: string; name: string };
@@ -145,4 +152,72 @@ export interface ApiKeySummary {
 /** Only ever returned once, at creation. */
 export interface CreatedApiKey extends ApiKeySummary {
   key: string;
+}
+
+/* ------------------------------------------------------------------ *
+ * Operator surface (`/v1/admin`)
+ *
+ * Everything here reads across tenant boundaries, which is the one thing the
+ * rest of the API is built never to do. The shapes are deliberately thin:
+ * counts, status and timestamps, never a customer's content.
+ * ------------------------------------------------------------------ */
+
+export type TenantPlan = 'free' | 'paid' | 'enterprise';
+
+export interface AdminTenant {
+  id: string;
+  slug: string;
+  name: string;
+  plan: TenantPlan;
+  custom_domain: string | null;
+  suspended: boolean;
+  suspended_at: string | null;
+  code_count: number;
+  active_code_count: number;
+  member_count: number;
+  last_scan_at: string | null;
+  created_at: string;
+}
+
+/** No destination URL, by design — an operator sees shape, not marketing links. */
+export interface AdminCode {
+  id: string;
+  short_code: string;
+  status: CodeStatus;
+  gtin: string | null;
+  created_at: string;
+}
+
+export type AuditAction =
+  | 'tenants.list'
+  | 'tenant.read'
+  | 'audit.read'
+  | 'code.blocked'
+  | 'code.unblocked'
+  | 'tenant.suspended'
+  | 'tenant.unsuspended'
+  | 'tenant.plan_changed';
+
+export interface AuditEntry {
+  /** A `bigserial`, so ordering by it is total — two entries in the same
+   *  millisecond still sort deterministically. Serialised as a string. */
+  id: string;
+  actor_email: string;
+  action: AuditAction;
+  tenant_slug: string | null;
+  target_id: string | null;
+  reason: string | null;
+  created_at: string;
+}
+
+/**
+ * A short-lived, read-only view of a customer's account.
+ *
+ * No refresh token comes back: the session lasts one access-token lifetime and
+ * cannot be extended without a fresh reason on the record.
+ */
+export interface Impersonation {
+  tenant_slug: string;
+  expires_in: number;
+  read_only: true;
 }

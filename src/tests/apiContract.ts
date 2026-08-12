@@ -45,6 +45,13 @@ export const API_CONTRACT: Record<string, AuthRequirement> = {
   'GET /v1/codes': 'session',
   'POST /v1/codes': 'session',
   'GET /v1/codes/export': 'session',
+
+  // The operator surface. `session` understates it — these also demand an
+  // address on the super-admin allow-list, and answer 404 rather than 403 to
+  // everyone else. The stub only models the credential, which is enough to
+  // catch the console failing to forward one.
+  'GET /v1/admin/tenants': 'session',
+  'GET /v1/admin/audit': 'session',
 };
 
 /** Matches a concrete request against the table, tolerating path parameters. */
@@ -54,7 +61,14 @@ export const requirementFor = (method: string, path: string): AuthRequirement | 
 
   // /v1/codes/{id}, /v1/members/{id}, /v1/invites/{id} and their sub-paths all
   // sit behind the same guard as their collection.
-  for (const prefix of ['/v1/codes/', '/v1/members/', '/v1/invites/', '/v1/api-keys/']) {
+  for (const prefix of [
+    '/v1/codes/',
+    '/v1/members/',
+    '/v1/invites/',
+    '/v1/api-keys/',
+    // Covers /v1/admin/tenants/{id}, its sub-paths, and the action endpoints.
+    '/v1/admin/',
+  ]) {
     if (path.startsWith(prefix)) return 'session';
   }
   return undefined;
