@@ -11,6 +11,28 @@ import type { NextRequest, NextResponse } from 'next/server';
 export const ACCESS_COOKIE = 'qi_at';
 export const REFRESH_COOKIE = 'qi_rt';
 
+/**
+ * An operator's read-only view of a customer account.
+ *
+ * Deliberately a *third* cookie rather than an overwrite of the access cookie.
+ * Impersonating must not cost the operator their own session — they need it
+ * back the moment they exit, and to reach the admin surface again, which an
+ * impersonation token is refused on.
+ *
+ * There is no refresh counterpart because the API issues none: the view lasts
+ * one access-token lifetime and extending it requires a fresh reason on the
+ * audit record.
+ */
+export const IMPERSONATION_COOKIE = 'qi_imp';
+
+/**
+ * The tenant being viewed, readable by the browser — and only that.
+ *
+ * The banner has to know it is showing somebody else's account, and a httpOnly
+ * cookie cannot tell it. This holds a slug, which is public, never the token.
+ */
+export const IMPERSONATION_LABEL_COOKIE = 'qi_imp_as';
+
 export interface TokenPair {
   access_token: string;
   refresh_token: string;
@@ -41,6 +63,32 @@ export const setSessionCookies = (response: NextResponse, tokens: TokenPair): vo
 export const clearSessionCookies = (response: NextResponse): void => {
   response.cookies.set(ACCESS_COOKIE, '', { ...BASE, maxAge: 0 });
   response.cookies.set(REFRESH_COOKIE, '', { ...BASE, maxAge: 0 });
+};
+
+export const setImpersonationCookies = (
+  response: NextResponse,
+  token: string,
+  tenantSlug: string,
+  expiresInSeconds: number,
+): void => {
+  // Expires with the token itself. A cookie outliving it would leave the banner
+  // claiming an impersonation that every request has already stopped honouring.
+  response.cookies.set(IMPERSONATION_COOKIE, token, { ...BASE, maxAge: expiresInSeconds });
+  response.cookies.set(IMPERSONATION_LABEL_COOKIE, tenantSlug, {
+    ...BASE,
+    httpOnly: false,
+    maxAge: expiresInSeconds,
+  });
+};
+
+export const clearImpersonationCookies = (response: NextResponse): void => {
+  response.cookies.set(IMPERSONATION_COOKIE, '', { ...BASE, maxAge: 0 });
+  response.cookies.set(IMPERSONATION_LABEL_COOKIE, '', { ...BASE, httpOnly: false, maxAge: 0 });
+};
+
+export const readImpersonation = (request: NextRequest): string | undefined => {
+  const token = request.cookies.get(IMPERSONATION_COOKIE)?.value;
+  return token === undefined || token === '' ? undefined : token;
 };
 
 export const readTokens = (request: NextRequest): { access?: string; refresh?: string } => {
