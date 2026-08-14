@@ -58,8 +58,24 @@ export const ACTION_LABEL: Record<AuditAction, string> = {
   'tenant.suspended': 'suspended organisation',
   'tenant.unsuspended': 'lifted suspension',
   'tenant.plan_changed': 'changed plan',
+  'impersonation.start': 'viewed as customer',
 };
 
-/** Reads carry no consequence; the four that change something are marked. */
+/**
+ * Reads carry no consequence and stay unemphasised. Everything else does.
+ *
+ * Impersonation counts even though it changes nothing: it is the entry somebody
+ * has to answer for, and burying it among the routine reads is exactly how it
+ * would go unnoticed.
+ */
 export const isWriteAction = (action: AuditAction): boolean =>
   action !== 'tenants.list' && action !== 'tenant.read' && action !== 'audit.read';
+
+/**
+ * Falls back to the raw value rather than rendering nothing.
+ *
+ * The API's error codes are additive, so a new action can appear here before
+ * this console knows the name — and an audit row with a blank action is worse
+ * than an ugly one.
+ */
+export const labelFor = (action: AuditAction): string => ACTION_LABEL[action] ?? action;

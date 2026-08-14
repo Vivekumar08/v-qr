@@ -196,7 +196,8 @@ export type AuditAction =
   | 'code.unblocked'
   | 'tenant.suspended'
   | 'tenant.unsuspended'
-  | 'tenant.plan_changed';
+  | 'tenant.plan_changed'
+  | 'impersonation.start';
 
 export interface AuditEntry {
   /** A `bigserial`, so ordering by it is total — two entries in the same

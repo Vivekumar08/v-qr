@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ACTION_LABEL, isWriteAction, relativeTime } from './format';
+import { isWriteAction, labelFor, relativeTime } from './format';
 
 /**
  * The operator trail.
@@ -102,7 +102,7 @@ function Row({ entry }: { entry: AuditEntry }) {
       <TableCell>
         {/* Writes are the ones somebody has to answer for. Reads are noise until
             they are not, so they stay visible but unemphasised. */}
-        <Badge variant={write ? 'default' : 'secondary'}>{ACTION_LABEL[entry.action]}</Badge>
+        <Badge variant={write ? 'default' : 'secondary'}>{labelFor(entry.action)}</Badge>
       </TableCell>
       <TableCell className="font-mono text-xs">{entry.tenant_slug ?? '—'}</TableCell>
       <TableCell className="text-muted-foreground max-w-md truncate text-xs" title={entry.reason ?? ''}>
