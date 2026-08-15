@@ -7,6 +7,7 @@ import {
   useCreateApiKeyMutation,
   useListApiKeysQuery,
   useMeQuery,
+  usePlanQuery,
   useRevokeApiKeyMutation,
 } from '@/lib/api/qrInfraApi';
 import { normaliseError } from '@/lib/api/errors';
@@ -76,6 +77,14 @@ function CreateKeyCard({ isOwner }: { isOwner: boolean }) {
   const [scopes, setScopes] = useState<string[]>(['codes:read']);
   const [created, setCreated] = useState<string | null>(null);
   const [createKey, { isLoading }] = useCreateApiKeyMutation();
+  const { data: plan } = usePlanQuery();
+
+  // Undefined while the plan is still loading is treated as allowed, same as
+  // CreateCodeDialog's `atLimit` — the form should not flash disabled before
+  // data arrives, only once we know the tenant lacks the feature. Gating here,
+  // before submit, is what lets us say the limit is reached instead of letting
+  // the request round-trip to a 403.
+  const canCreate = plan === undefined || plan.limits.features.includes('api_keys');
 
   const toggle = (scope: string) =>
     setScopes((current) =>
@@ -102,36 +111,49 @@ function CreateKeyCard({ isOwner }: { isOwner: boolean }) {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {!canCreate && (
+          // Said before the form, not after a submit fails with a 403 — the
+          // whole point of gating client-side.
+          <p className="text-muted-foreground rounded-lg border border-dashed p-3 text-sm">
+            API keys are not on the {plan?.plan} plan. Upgrade to create one.
+          </p>
+        )}
+
         <form onSubmit={(event) => void onSubmit(event)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="key-name">What is it for?</Label>
-            <Input
-              id="key-name"
-              required
-              placeholder="Label printer, CI, warehouse sync"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </div>
+          <fieldset disabled={!canCreate} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="key-name">What is it for?</Label>
+              <Input
+                id="key-name"
+                required
+                placeholder="Label printer, CI, warehouse sync"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
 
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium">Access</legend>
-            {SCOPES.filter((scope) => !('ownerOnly' in scope) || isOwner).map((scope) => (
-              <label key={scope.value} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={scopes.includes(scope.value)}
-                  onChange={() => toggle(scope.value)}
-                />
-                {scope.label}
-                <code className="text-muted-foreground font-mono text-xs">{scope.value}</code>
-              </label>
-            ))}
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Access</legend>
+              {SCOPES.filter((scope) => !('ownerOnly' in scope) || isOwner).map((scope) => (
+                <label key={scope.value} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={scopes.includes(scope.value)}
+                    onChange={() => toggle(scope.value)}
+                  />
+                  {scope.label}
+                  <code className="text-muted-foreground font-mono text-xs">{scope.value}</code>
+                </label>
+              ))}
+            </fieldset>
+
+            <Button
+              type="submit"
+              disabled={isLoading || name.trim() === '' || scopes.length === 0}
+            >
+              {isLoading ? 'Creating…' : 'Create key'}
+            </Button>
           </fieldset>
-
-          <Button type="submit" disabled={isLoading || name.trim() === '' || scopes.length === 0}>
-            {isLoading ? 'Creating…' : 'Create key'}
-          </Button>
         </form>
 
         {created !== null && (
