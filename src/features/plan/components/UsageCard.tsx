@@ -1,6 +1,7 @@
 'use client';
 
 import { usePlanQuery } from '@/lib/api/qrInfraApi';
+import { normaliseError } from '@/lib/api/errors';
 import type { PlanFeature } from '@/lib/api/types';
 import { meterFill } from '../limits';
 import { Badge } from '@/components/ui/badge';
@@ -13,12 +14,24 @@ const FEATURE_LABEL: Record<PlanFeature, string> = {
   api_keys: 'API access',
 };
 
-const ALL_FEATURES: PlanFeature[] = ['analytics', 'export', 'api_keys'];
-
 export function UsageCard() {
-  const { data, isLoading } = usePlanQuery();
+  const { data, isLoading, error } = usePlanQuery();
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
+
+  if (error !== undefined) {
+    const { message, requestId } = normaliseError(error);
+    return (
+      <div className="rounded-lg border border-dashed p-12 text-center">
+        <p className="font-medium">Could not load your plan</p>
+        <p className="text-muted-foreground mt-1 text-sm">{message}</p>
+        {requestId !== undefined && (
+          <p className="text-muted-foreground mt-2 font-mono text-xs">Request {requestId}</p>
+        )}
+      </div>
+    );
+  }
+
   if (data === undefined) return null;
 
   return (
@@ -38,7 +51,11 @@ export function UsageCard() {
         <Meter label="Seats" used={data.usage.seats} limit={data.limits.seats} />
 
         <div className="space-y-2">
-          {ALL_FEATURES.map((feature) => {
+          {/* An older backend that predates `all_features` simply omits it — the
+              two repos deploy independently. Falling back to the granted list
+              degrades to showing only what the tenant has, rather than crashing
+              on `undefined.map`. */}
+          {(data.limits.all_features ?? data.limits.features).map((feature) => {
             const included = data.limits.features.includes(feature);
             return (
               <div key={feature} className="flex items-center justify-between text-sm">
