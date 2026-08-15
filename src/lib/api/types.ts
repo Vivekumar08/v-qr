@@ -231,3 +231,19 @@ export interface Impersonation {
   expires_in: number;
   read_only: true;
 }
+
+export type PlanFeature = 'analytics' | 'export' | 'api_keys';
+
+/** Mirrors `GET /v1/plan`. `null` is unlimited, never a sentinel. */
+export interface PlanState {
+  plan: TenantPlan;
+  limits: {
+    active_codes: number | null;
+    seats: number | null;
+    features: PlanFeature[];
+  };
+  usage: {
+    active_codes: number;
+    seats: number;
+  };
+}
