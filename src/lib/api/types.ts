@@ -231,3 +231,31 @@ export interface Impersonation {
   expires_in: number;
   read_only: true;
 }
+
+export type PlanFeature = 'analytics' | 'export' | 'api_keys';
+
+/** Mirrors `GET /v1/plan`. `null` is unlimited, never a sentinel. */
+export interface PlanState {
+  plan: TenantPlan;
+  limits: {
+    active_codes: number | null;
+    seats: number | null;
+    /** The features this plan grants. */
+    features: PlanFeature[];
+    /**
+     * Every feature that exists, regardless of what this plan grants — the
+     * only way the console can render a feature as "not on this plan" without
+     * hardcoding the universe itself. Source of truth is the backend's
+     * `PLAN_FEATURES`.
+     *
+     * Optional: the two repos deploy independently, and the backend has shipped
+     * ahead of the console before. An older backend simply omits this field, and
+     * callers must fall back to `features` rather than assume it is present.
+     */
+    all_features?: PlanFeature[];
+  };
+  usage: {
+    active_codes: number;
+    seats: number;
+  };
+}

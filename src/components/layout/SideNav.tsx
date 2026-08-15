@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { QrCode, BarChart3, KeyRound, Users, Shield, ScrollText } from 'lucide-react';
+import { QrCode, BarChart3, KeyRound, Users, Shield, ScrollText, CreditCard } from 'lucide-react';
 import { useMeQuery } from '@/lib/api/qrInfraApi';
 import { useImpersonation } from '@/features/admin/useImpersonation';
 
@@ -17,6 +17,7 @@ const ITEMS = [
   { href: '/codes', label: 'Codes', icon: QrCode, ready: true },
   { href: '/settings/team', label: 'Team', icon: Users, ready: true },
   { href: '/settings/api-keys', label: 'API keys', icon: KeyRound, ready: true },
+  { href: '/settings/plan', label: 'Plan', icon: CreditCard, ready: true },
   { href: '/analytics', label: 'Analytics', icon: BarChart3, ready: false },
 ] as const;
 

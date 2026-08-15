@@ -15,6 +15,7 @@ import type {
   Invite,
   Me,
   Member,
+  PlanState,
   Role,
   ScanSummary,
   TenantPlan,
@@ -48,12 +49,18 @@ export const qrInfraApi = createApi({
     'AdminTenant',
     'AdminCodes',
     'AdminAudit',
+    'Plan',
   ],
 
   endpoints: (builder) => ({
     me: builder.query<Me, void>({
       query: () => '/v1/auth/me',
       providesTags: ['Me'],
+    }),
+
+    plan: builder.query<PlanState, void>({
+      query: () => '/v1/plan',
+      providesTags: ['Plan'],
     }),
 
     listMembers: builder.query<{ data: Member[] }, void>({
@@ -97,12 +104,15 @@ export const qrInfraApi = createApi({
         body,
         headers: { 'idempotency-key': crypto.randomUUID() },
       }),
-      invalidatesTags: ['Invites'],
+      // A seat is spoken for the moment the invite exists, not only once it's
+      // accepted, so the usage meter has to move here too.
+      invalidatesTags: ['Invites', 'Plan'],
     }),
 
     revokeInvite: builder.mutation<unknown, string>({
       query: (id) => ({ url: `/v1/invites/${id}`, method: 'DELETE' }),
-      invalidatesTags: ['Invites'],
+      // Revoking a pending invite frees the seat it was holding.
+      invalidatesTags: ['Invites', 'Plan'],
     }),
 
     listApiKeys: builder.query<{ data: ApiKeySummary[] }, void>({
@@ -190,7 +200,7 @@ export const qrInfraApi = createApi({
         // an impatient double-click — must never produce two codes.
         headers: { 'idempotency-key': crypto.randomUUID() },
       }),
-      invalidatesTags: [{ type: 'Codes', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Codes', id: 'LIST' }, 'Plan'],
     }),
 
     updateCodeStatus: builder.mutation<Code, { id: string; status: CallerSettableStatus }>({
@@ -213,7 +223,11 @@ export const qrInfraApi = createApi({
         body: {},
         headers: { 'idempotency-key': crypto.randomUUID() },
       }),
-      invalidatesTags: (_result, _error, id) => [{ type: 'Code', id }, { type: 'Codes', id: 'LIST' }],
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'Code', id },
+        { type: 'Codes', id: 'LIST' },
+        'Plan',
+      ],
     }),
 
     addDestination: builder.mutation<unknown, { id: string; url: string }>({
@@ -344,6 +358,7 @@ export const qrInfraApi = createApi({
 
 export const {
   useMeQuery,
+  usePlanQuery,
   useListMembersQuery,
   useChangeMemberRoleMutation,
   useRemoveMemberMutation,
