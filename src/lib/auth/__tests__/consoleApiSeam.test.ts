@@ -147,7 +147,9 @@ describe('the Google callback', () => {
     );
 
     expect(response.status).toBe(307);
-    expect(api.calls.at(-1)?.path).toBe('/v1/auth/session/exchange');
+    // Not `at(-1)`: a session with no tenant now asks /me afterwards, to tell a
+    // brand-new signup apart from a platform operator.
+    expect(api.calls.map((call) => call.path)).toContain('/v1/auth/session/exchange');
 
     const cookies = response.headers.get('set-cookie') ?? '';
     expect(cookies).toContain(ACCESS_COOKIE);
@@ -158,6 +160,40 @@ describe('the Google callback', () => {
     const response = await callbackGet(
       new NextRequest('http://localhost:3000/auth/callback?code=otc_valid'),
     );
+    expect(response.headers.get('location')).toContain('/onboarding');
+  });
+
+  it('sends a platform operator to the admin console, not to onboarding', async () => {
+    /**
+     * Bug 4, and the reason this file exists.
+     *
+     * An operator has no organisation *by design* — the admin routes carry
+     * `requireTenant: false` precisely so they can work without one. Reading
+     * "no active tenant" as "needs onboarding" parked them on a form asking
+     * them to create an organisation they must not own, with no link off the
+     * page. Every admin endpoint worked; the console could not reach them.
+     *
+     * Invisible to the API suite, which never follows a redirect, and to the
+     * earlier seam tests, which had no operator to sign in as.
+     */
+    api.reply('/v1/auth/me', { status: 200, body: { is_super_admin: true } });
+
+    const response = await callbackGet(
+      new NextRequest('http://localhost:3000/auth/callback?code=otc_valid'),
+    );
+
+    expect(response.headers.get('location')).toContain('/admin');
+  });
+
+  it('still sends an ordinary tenantless user to onboarding when /me fails', async () => {
+    // Guessing "operator" on a failed lookup would strand a new signup on a
+    // 404. Onboarding is the recoverable direction.
+    api.reply('/v1/auth/me', { status: 500 });
+
+    const response = await callbackGet(
+      new NextRequest('http://localhost:3000/auth/callback?code=otc_valid'),
+    );
+
     expect(response.headers.get('location')).toContain('/onboarding');
   });
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { QrCode, BarChart3, KeyRound, Users, Shield, ScrollText } from 'lucide-react';
 import { useMeQuery } from '@/lib/api/qrInfraApi';
+import { useImpersonation } from '@/features/admin/useImpersonation';
 
 /**
  * The active item is marked by a filled pill, not an underline.
@@ -36,22 +37,52 @@ export function SideNav() {
   // so a forged `true` here buys two menu items and two empty pages.
   const { data: me } = useMeQuery();
 
+  /**
+   * Hidden while impersonating, because an impersonation token is refused on
+   * the admin surface outright — so these links would 404 rather than take you
+   * anywhere. Offering a way back to the operator console from inside a
+   * customer's account also invites treating the two as one session; the
+   * banner's Exit is the one route out, and it clears the view first.
+   */
+  const impersonating = useImpersonation() !== null;
+
+  /**
+   * Every item above the Platform group is tenant-scoped and answers
+   * `no_active_tenant` without one.
+   *
+   * A platform operator has no organisation by design, so all three were live
+   * links to an error page. Shown disabled rather than hidden: an operator
+   * looking for Codes should learn why it is unavailable, not wonder whether
+   * the console is broken. Also catches an ordinary user who has left their
+   * last team.
+   *
+   * `me === undefined` is still loading — not the same as having no tenant, and
+   * flashing the nav disabled on every page load would be worse than waiting.
+   */
+  const withoutTenant = me !== undefined && me.active_tenant_id === null;
+
   return (
     <nav className="flex flex-col gap-0.5 px-3 py-2">
       {ITEMS.map((item) => {
         const active = pathname.startsWith(item.href);
         const Icon = item.icon;
 
-        if (!item.ready) {
+        if (!item.ready || withoutTenant) {
           return (
             <span
               key={item.href}
               className="text-muted-foreground/45 flex cursor-default items-center gap-2.5 rounded-lg px-3 py-2 text-sm"
-              title="Coming with accounts and billing"
+              title={
+                item.ready
+                  ? 'Needs an organisation. Platform operators do not have one.'
+                  : 'Coming with accounts and billing'
+              }
             >
               <Icon className="size-4" aria-hidden />
               {item.label}
-              <span className="ml-auto text-[10px] tracking-wide uppercase">Soon</span>
+              {!item.ready && (
+                <span className="ml-auto text-[10px] tracking-wide uppercase">Soon</span>
+              )}
             </span>
           );
         }
@@ -73,7 +104,7 @@ export function SideNav() {
         );
       })}
 
-      {me?.is_super_admin === true && (
+      {me?.is_super_admin === true && !impersonating && (
         <>
           <p className="text-muted-foreground/60 mt-4 px-3 pb-1 text-[10px] font-medium tracking-wider uppercase">
             Platform

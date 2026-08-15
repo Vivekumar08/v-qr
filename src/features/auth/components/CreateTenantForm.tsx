@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { postAuth } from '@/lib/auth/client';
+import { useMeQuery } from '@/lib/api/qrInfraApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -154,6 +156,32 @@ export function CreateTenantForm({ resolverDomain }: { resolverDomain: string })
       <Button type="submit" className="w-full" disabled={busy || !slugValid || slug === ''}>
         {busy ? 'Creating…' : 'Create organisation'}
       </Button>
+
+      <OperatorEscape />
     </form>
+  );
+}
+
+/**
+ * A way out for a platform operator who lands here.
+ *
+ * Sign-in now routes them to `/admin` instead, so this should be unreachable —
+ * but "should be" is what put an operator on a form asking them to create an
+ * organisation they must not own, with no link off the page. The dead end is
+ * worth a few lines even once the cause is fixed, because the next thing that
+ * strands a session here will not be the same thing.
+ */
+function OperatorEscape() {
+  const { data: me } = useMeQuery();
+  if (me?.is_super_admin !== true) return null;
+
+  return (
+    <p className="text-muted-foreground pt-2 text-center text-xs">
+      You are a platform operator.{' '}
+      <Link href="/admin" className="text-foreground underline underline-offset-2">
+        Go to the operator console
+      </Link>{' '}
+      instead — you do not need an organisation of your own.
+    </p>
   );
 }

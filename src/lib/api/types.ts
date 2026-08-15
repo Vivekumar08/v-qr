@@ -188,16 +188,25 @@ export interface AdminCode {
   created_at: string;
 }
 
+/**
+ * Mirrors `AUDIT_ACTIONS` in the API
+ * (`src/modules/admin/domain/entities/AuditEntry.ts`), which is the source of
+ * truth. Keep both in step: this list has drifted twice, and the symptom both
+ * times was rows rendering wrong rather than anything failing.
+ */
 export type AuditAction =
   | 'tenants.list'
   | 'tenant.read'
-  | 'audit.read'
-  | 'code.blocked'
-  | 'code.unblocked'
+  | 'tenant.plan_changed'
   | 'tenant.suspended'
   | 'tenant.unsuspended'
-  | 'tenant.plan_changed'
-  | 'impersonation.start';
+  | 'users.list'
+  | 'codes.read'
+  | 'code.blocked'
+  | 'code.unblocked'
+  | 'scans.read'
+  | 'impersonation.start'
+  | 'audit.read';
 
 export interface AuditEntry {
   /** A `bigserial`, so ordering by it is total — two entries in the same

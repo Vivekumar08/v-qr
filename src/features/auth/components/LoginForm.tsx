@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { postAuth } from '@/lib/auth/client';
+import { isOperator, landingFor } from '@/lib/auth/landing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,11 +48,14 @@ export function LoginForm() {
       return;
     }
 
-    // A user with no tenant has nowhere to land — every Google signup starts
-    // that way, and a password account can reach it by leaving its last team.
-    const next =
-      result.data?.active_tenant_id === null ? '/onboarding' : (params.get('next') ?? '/codes');
-    router.replace(next);
+    const activeTenantId = result.data?.active_tenant_id ?? null;
+
+    // Only asked when there is no tenant to land in, which is also the only
+    // case where the answer changes anything. The proxy attaches the session.
+    const isSuperAdmin =
+      activeTenantId === null ? await isOperator('/api/proxy/v1/auth/me') : false;
+
+    router.replace(landingFor({ activeTenantId, isSuperAdmin, next: params.get('next') }));
   };
 
   return (

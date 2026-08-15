@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useSyncExternalStore } from 'react';
+import { useState } from 'react';
 import { Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { IMPERSONATION_LABEL_COOKIE } from '@/lib/auth/cookies';
+import { useImpersonation } from '../useImpersonation';
 
 /**
  * Impossible to miss, and impossible to leave running by accident.
@@ -17,29 +17,8 @@ import { IMPERSONATION_LABEL_COOKIE } from '@/lib/auth/cookies';
  * The API refuses every write from an impersonation token, so this is a label
  * for a rule already enforced — not the rule itself.
  */
-/**
- * The label cookie is readable on purpose; the token beside it is httpOnly and
- * never reaches this component.
- *
- * Read through `useSyncExternalStore` rather than an effect so the server and
- * the first client render agree — the server has no `document`, and a banner
- * that appears one paint late is a banner somebody can act before seeing.
- */
-const readTenant = (): string | null => {
-  const match = document.cookie
-    .split('; ')
-    .find((entry) => entry.startsWith(`${IMPERSONATION_LABEL_COOKIE}=`));
-
-  if (match === undefined) return null;
-  const value = decodeURIComponent(match.split('=')[1] ?? '');
-  return value === '' ? null : value;
-};
-
-/** Cookies emit no events, and this one only changes on a full page load. */
-const subscribe = (): (() => void) => () => undefined;
-
 export function ImpersonationBanner() {
-  const tenant = useSyncExternalStore(subscribe, readTenant, () => null);
+  const tenant = useImpersonation();
   const [leaving, setLeaving] = useState(false);
 
   if (tenant === null) return null;

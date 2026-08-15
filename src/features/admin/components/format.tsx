@@ -52,14 +52,36 @@ export function relativeTime(iso: string | null): string {
 export const ACTION_LABEL: Record<AuditAction, string> = {
   'tenants.list': 'listed organisations',
   'tenant.read': 'opened organisation',
-  'audit.read': 'read the audit log',
-  'code.blocked': 'blocked a code',
-  'code.unblocked': 'unblocked a code',
+  'tenant.plan_changed': 'changed plan',
   'tenant.suspended': 'suspended organisation',
   'tenant.unsuspended': 'lifted suspension',
-  'tenant.plan_changed': 'changed plan',
+  'users.list': 'listed users',
+  'codes.read': 'read codes',
+  'code.blocked': 'blocked a code',
+  'code.unblocked': 'unblocked a code',
+  'scans.read': 'read scans',
   'impersonation.start': 'viewed as customer',
+  'audit.read': 'read the audit log',
 };
+
+/**
+ * The reads, named explicitly.
+ *
+ * This was written the other way round — "anything that is not one of these
+ * three reads is a write" — and every action the console had not heard of was
+ * badged as a write. `codes.read` showed up in the log looking like an
+ * intervention. Listing the reads is no safer in principle, but it fails in the
+ * better direction: an unrecognised action is emphasised rather than hidden,
+ * and an operator asks about it.
+ */
+const READ_ACTIONS: ReadonlySet<string> = new Set<AuditAction>([
+  'tenants.list',
+  'tenant.read',
+  'users.list',
+  'codes.read',
+  'scans.read',
+  'audit.read',
+]);
 
 /**
  * Reads carry no consequence and stay unemphasised. Everything else does.
@@ -68,8 +90,7 @@ export const ACTION_LABEL: Record<AuditAction, string> = {
  * has to answer for, and burying it among the routine reads is exactly how it
  * would go unnoticed.
  */
-export const isWriteAction = (action: AuditAction): boolean =>
-  action !== 'tenants.list' && action !== 'tenant.read' && action !== 'audit.read';
+export const isWriteAction = (action: AuditAction): boolean => !READ_ACTIONS.has(action);
 
 /**
  * Falls back to the raw value rather than rendering nothing.

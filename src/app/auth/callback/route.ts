@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { setSessionCookies, type TokenPair } from '@/lib/auth/cookies';
+import { isOperator, landingFor } from '@/lib/auth/landing';
 
 /**
  * Completes the Google handoff.
@@ -40,10 +41,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   // A Google signup has a user and no organisation, and cannot have one yet:
   // the slug becomes the printed subdomain and has to be chosen deliberately,
-  // not guessed from a profile name.
-  const destination = activeTenantId === null ? '/onboarding' : '/codes';
+  // not guessed from a profile name. An operator has none either, and must not
+  // be sent to a form asking them to create one.
+  const isSuperAdmin =
+    activeTenantId === null
+      ? await isOperator(`${API_BASE_URL}/v1/auth/me`, tokens.access_token)
+      : false;
 
-  const redirect = NextResponse.redirect(new URL(destination, request.url));
+  const redirect = NextResponse.redirect(
+    new URL(landingFor({ activeTenantId, isSuperAdmin }), request.url),
+  );
   setSessionCookies(redirect, tokens);
   return redirect;
 }
