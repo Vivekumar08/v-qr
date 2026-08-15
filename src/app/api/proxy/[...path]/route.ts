@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import {
+  clearImpersonationCookies,
   clearSessionCookies,
   originAllowed,
+  readImpersonation,
   readTokens,
   setSessionCookies,
   type TokenPair,
@@ -89,9 +91,25 @@ const proxy = async (
   const target = `${API_BASE_URL}/${joined}${request.nextUrl.search}`;
 
   const { access, refresh } = readTokens(request);
+
+  /**
+   * An impersonation outranks the operator's own session for the duration.
+   *
+   * Everything the console asks for while one is active must be answered as the
+   * customer, or the screens would mix two accounts together — a tenant's code
+   * list beside the operator's own organisation name.
+   *
+   * `/v1/admin` is the exception, and it is not enforced here: the API refuses
+   * an impersonation token on that surface outright, which is the check that
+   * matters. Duplicating it in the proxy would create two rules to keep in step.
+   */
+  const impersonation = readImpersonation(request);
+
   const needsSession = !UNAUTHENTICATED_PATHS.has(joined);
 
-  if (needsSession && access === undefined && refresh === undefined) return notSignedIn();
+  if (needsSession && impersonation === undefined && access === undefined && refresh === undefined) {
+    return notSignedIn();
+  }
 
   const baseHeaders = new Headers();
   for (const name of FORWARD_REQUEST_HEADERS) {
@@ -125,12 +143,14 @@ const proxy = async (
     });
   };
 
+  const credential = impersonation ?? access;
+
   let upstream: Response;
   try {
     upstream =
-      access === undefined && needsSession
+      credential === undefined && needsSession
         ? new Response(null, { status: 401 })
-        : await attempt(access);
+        : await attempt(credential);
   } catch {
     return NextResponse.json(
       {
@@ -152,8 +172,32 @@ const proxy = async (
    * against the API, from every open tab at once. If the retry also fails, the
    * session is genuinely over and the client is told.
    */
+  /**
+   * An expired impersonation is never refreshed — it is ended.
+   *
+   * The only refresh token on hand belongs to the operator, and spending it
+   * here would silently hand back a full-strength operator session under a
+   * banner still claiming a read-only customer view. The view is meant to
+   * expire; extending it requires a new reason on the audit record.
+   */
+  if (impersonation !== undefined && upstream.status === 401) {
+    const expired = NextResponse.json(
+      {
+        error: {
+          type: 'authentication',
+          code: 'impersonation_expired',
+          message: 'That view has expired. You are back in your own session.',
+          request_id: 'proxy',
+        },
+      },
+      { status: 401 },
+    );
+    clearImpersonationCookies(expired);
+    return expired;
+  }
+
   // Only worth refreshing when a session was expected in the first place.
-  if (needsSession && upstream.status === 401 && refresh !== undefined) {
+  if (needsSession && impersonation === undefined && upstream.status === 401 && refresh !== undefined) {
     const refreshed = await fetch(`${API_BASE_URL}/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

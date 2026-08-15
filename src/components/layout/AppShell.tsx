@@ -5,6 +5,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { TenantSwitcher } from '@/features/team/components/TenantSwitcher';
 import { UserMenu } from '@/features/auth/components/UserMenu';
 import { VerifyBanner } from '@/features/auth/components/VerifyBanner';
+import { ImpersonationBanner } from '@/features/admin/components/ImpersonationBanner';
 
 /**
  * Server component — the only interactive parts are the nav's active state and
@@ -16,7 +17,11 @@ import { VerifyBanner } from '@/features/auth/components/VerifyBanner';
  */
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh">
+    <div className="flex min-h-dvh flex-col">
+      {/* Above everything, including the sidebar. Someone inside a customer's
+          account must see it whatever they scroll to. */}
+      <ImpersonationBanner />
+      <div className="flex min-h-0 flex-1">
       <aside className="bg-sidebar border-sidebar-border hidden w-60 shrink-0 border-r lg:flex lg:flex-col">
         <div className="flex h-14 items-center px-5">
           <Link href="/codes" className="font-heading text-[15px] font-bold tracking-tight">
@@ -51,6 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <VerifyBanner />
 
         <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 lg:px-8">{children}</main>
+      </div>
       </div>
     </div>
   );

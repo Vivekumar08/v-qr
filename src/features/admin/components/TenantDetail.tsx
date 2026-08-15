@@ -178,6 +178,25 @@ function Actions({ tenant }: { tenant: AdminTenant }) {
           </div>
         </ReasonDialog>
 
+        <ReasonDialog
+          trigger="View as customer"
+          title="View as customer"
+          description="Opens their console as it looks to them, read-only — the API refuses every write from this session. It lasts fifteen minutes and cannot be extended without a new reason."
+          confirmLabel="Start viewing"
+          onConfirm={async (reason) => {
+            const response = await fetch('/api/admin/impersonate', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ tenant_id: tenant.id, reason }),
+            });
+            if (!response.ok) throw await response.json();
+            // Hard navigation: the impersonation cookie has to be in play before
+            // anything renders, and every cached query belongs to the operator.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- discarding the store is the point
+            window.location.assign('/codes');
+          }}
+        />
+
         <Button
           variant="outline"
           size="sm"
