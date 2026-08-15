@@ -15,6 +15,7 @@ import {
   usePlanQuery,
 } from '@/lib/api/qrInfraApi';
 import { normaliseError } from '@/lib/api/errors';
+import { isLimitReached } from '@/features/plan/limits';
 import type { Member, Role } from '@/lib/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -106,10 +107,7 @@ function InviteCard() {
   const [createInvite, { isLoading }] = useCreateInviteMutation();
   const { data: plan } = usePlanQuery();
 
-  // `>=` not `>`: at the last seat, the next invite is the one that doesn't
-  // fit. A downgrade that leaves a tenant over the ceiling hits this too.
-  const seatsFull =
-    plan !== undefined && plan.limits.seats !== null && plan.usage.seats >= plan.limits.seats;
+  const seatsFull = plan !== undefined && isLimitReached(plan.usage.seats, plan.limits.seats);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();

@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useCreateCodeMutation, usePlanQuery } from '@/lib/api/qrInfraApi';
 import { normaliseError } from '@/lib/api/errors';
+import { isLimitReached } from '@/features/plan/limits';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -28,12 +29,7 @@ export function CreateCodeDialog() {
   const [createCode, { isLoading }] = useCreateCodeMutation();
   const { data: plan } = usePlanQuery();
 
-  // `>=` not `>`: at 10 of 10 the next one is the eleventh. An over-limit
-  // tenant (a downgrade leaves one) is covered by the same comparison.
-  const atLimit =
-    plan !== undefined &&
-    plan.limits.active_codes !== null &&
-    plan.usage.active_codes >= plan.limits.active_codes;
+  const atLimit = plan !== undefined && isLimitReached(plan.usage.active_codes, plan.limits.active_codes);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();

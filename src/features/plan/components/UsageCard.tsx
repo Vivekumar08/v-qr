@@ -2,6 +2,7 @@
 
 import { usePlanQuery } from '@/lib/api/qrInfraApi';
 import type { PlanFeature } from '@/lib/api/types';
+import { meterFill } from '../limits';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -61,8 +62,7 @@ export function UsageCard() {
 function Meter({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   // Over the limit is a real state — a downgrade leaves it — so the bar is
   // clamped and coloured rather than allowed to overflow its track.
-  const over = limit !== null && used >= limit;
-  const percent = limit === null ? 0 : Math.min(100, Math.round((used / limit) * 100));
+  const { show, percent, over } = meterFill(used, limit);
 
   return (
     <div className="space-y-1.5">
@@ -72,7 +72,7 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
           {used} / {limit ?? 'unlimited'}
         </span>
       </div>
-      {limit !== null && (
+      {show && (
         <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
           <div
             className={`h-full rounded-full ${over ? 'bg-destructive' : 'bg-primary'}`}

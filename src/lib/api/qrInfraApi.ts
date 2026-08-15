@@ -104,13 +104,14 @@ export const qrInfraApi = createApi({
         body,
         headers: { 'idempotency-key': crypto.randomUUID() },
       }),
-      invalidatesTags: ['Invites'],
+      // A seat is spoken for the moment the invite exists, not only once it's
+      // accepted, so the usage meter has to move here too.
+      invalidatesTags: ['Invites', 'Plan'],
     }),
 
     revokeInvite: builder.mutation<unknown, string>({
       query: (id) => ({ url: `/v1/invites/${id}`, method: 'DELETE' }),
-      // A seat is spoken for the moment the invite exists, not only once it's
-      // accepted, so the usage meter has to move here too.
+      // Revoking a pending invite frees the seat it was holding.
       invalidatesTags: ['Invites', 'Plan'],
     }),
 
