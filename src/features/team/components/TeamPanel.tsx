@@ -12,6 +12,7 @@ import {
   useRemoveMemberMutation,
   useRevokeInviteMutation,
   useTransferOwnershipMutation,
+  usePlanQuery,
 } from '@/lib/api/qrInfraApi';
 import { normaliseError } from '@/lib/api/errors';
 import type { Member, Role } from '@/lib/api/types';
@@ -103,6 +104,12 @@ function InviteCard() {
   const [role, setRole] = useState<Role>('member');
   const [link, setLink] = useState<string | null>(null);
   const [createInvite, { isLoading }] = useCreateInviteMutation();
+  const { data: plan } = usePlanQuery();
+
+  // `>=` not `>`: at the last seat, the next invite is the one that doesn't
+  // fit. A downgrade that leaves a tenant over the ceiling hits this too.
+  const seatsFull =
+    plan !== undefined && plan.limits.seats !== null && plan.usage.seats >= plan.limits.seats;
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -153,10 +160,21 @@ function InviteCard() {
             </Select>
           </div>
 
-          <Button type="submit" className="self-end" disabled={isLoading || email.trim() === ''}>
-            {isLoading ? 'Sending…' : 'Send invitation'}
+          <Button
+            type="submit"
+            className="self-end"
+            disabled={isLoading || email.trim() === '' || seatsFull}
+          >
+            {seatsFull ? 'Seat limit reached' : isLoading ? 'Sending…' : 'Send invitation'}
           </Button>
         </form>
+
+        {seatsFull && (
+          <p className="text-muted-foreground text-xs">
+            {plan.usage.seats} of {plan.limits.seats} seats used on the {plan.plan} plan. A
+            pending invite holds a seat — revoking one frees it.
+          </p>
+        )}
 
         {link !== null && (
           <div className="bg-muted/40 space-y-2 rounded-lg border p-3">
