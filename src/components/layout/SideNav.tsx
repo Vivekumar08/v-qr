@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { QrCode, BarChart3, KeyRound, Users } from 'lucide-react';
+import { QrCode, BarChart3, KeyRound, Users, Shield, ScrollText } from 'lucide-react';
+import { useMeQuery } from '@/lib/api/qrInfraApi';
 
 /**
  * The active item is marked by a filled pill, not an underline.
@@ -18,8 +19,22 @@ const ITEMS = [
   { href: '/analytics', label: 'Analytics', icon: BarChart3, ready: false },
 ] as const;
 
+/**
+ * Shown only to platform operators, and separated from the tenant navigation
+ * above it — everything in this group reads across organisations, which is the
+ * one thing the rest of the console never does. Running them together in a
+ * single list would make a cross-tenant page look like an ordinary one.
+ */
+const OPERATOR_ITEMS = [
+  { href: '/admin', label: 'Organisations', icon: Shield },
+  { href: '/admin/audit', label: 'Audit log', icon: ScrollText },
+] as const;
+
 export function SideNav() {
   const pathname = usePathname();
+  // Purely for rendering. The API answers 404 to anyone not on the allow-list,
+  // so a forged `true` here buys two menu items and two empty pages.
+  const { data: me } = useMeQuery();
 
   return (
     <nav className="flex flex-col gap-0.5 px-3 py-2">
@@ -57,6 +72,37 @@ export function SideNav() {
           </Link>
         );
       })}
+
+      {me?.is_super_admin === true && (
+        <>
+          <p className="text-muted-foreground/60 mt-4 px-3 pb-1 text-[10px] font-medium tracking-wider uppercase">
+            Platform
+          </p>
+          {OPERATOR_ITEMS.map((item) => {
+            // Exact match on /admin, or the tenant detail pages would light up
+            // both this and the audit entry at once.
+            const active =
+              item.href === '/admin' ? pathname === '/admin' || pathname.startsWith('/admin/tenants') : pathname.startsWith(item.href);
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                  active
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground'
+                }`}
+              >
+                <Icon className="size-4" aria-hidden />
+                {item.label}
+              </Link>
+            );
+          })}
+        </>
+      )}
     </nav>
   );
 }
