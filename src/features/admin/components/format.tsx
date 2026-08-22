@@ -53,6 +53,7 @@ export const ACTION_LABEL: Record<AuditAction, string> = {
   'tenants.list': 'listed organisations',
   'tenant.read': 'opened organisation',
   'tenant.plan_changed': 'changed plan',
+  'billing.plan_changed': 'plan changed by billing',
   'tenant.suspended': 'suspended organisation',
   'tenant.unsuspended': 'lifted suspension',
   'users.list': 'listed users',

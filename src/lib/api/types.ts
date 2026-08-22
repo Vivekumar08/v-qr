@@ -198,6 +198,7 @@ export type AuditAction =
   | 'tenants.list'
   | 'tenant.read'
   | 'tenant.plan_changed'
+  | 'billing.plan_changed'
   | 'tenant.suspended'
   | 'tenant.unsuspended'
   | 'users.list'
