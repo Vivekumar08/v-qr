@@ -11,6 +11,7 @@ import {
 } from '@/lib/api/qrInfraApi';
 import { normaliseError } from '@/lib/api/errors';
 import type { BillingCycle, BillingState } from '@/lib/api/types';
+import { canStartSubscribe, selectAvailableCycles } from '@/features/plan/billing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -123,6 +124,14 @@ export function BillingPanel() {
   if (data === undefined) return null;
 
   const onSubscribe = async (cycle: BillingCycle) => {
+    // Set synchronously, before the first `await`. A double-click — the same
+    // button twice, or monthly then annual — must not be able to land a
+    // second `subscribe()` call: each dispatch mints its own fresh
+    // idempotency key, so two calls in flight are two Razorpay payment
+    // mandates and a customer charged twice, not one deduped request. Every
+    // subsequent line in this function is asynchronous, so this is the only
+    // place the race can be closed.
+    if (!canStartSubscribe(startingCycle)) return;
     setStartingCycle(cycle);
     try {
       await loadCheckout();
@@ -213,9 +222,7 @@ function NoSubscription({
   startingCycle: BillingCycle | null;
   isSubscribing: boolean;
 }) {
-  const cycles = (['monthly', 'annual'] as const)
-    .map((cycle) => ({ cycle, paise: prices[`${cycle}_paise`] }))
-    .filter((entry): entry is { cycle: BillingCycle; paise: number } => entry.paise !== null);
+  const cycles = selectAvailableCycles(prices);
 
   if (cycles.length === 0) {
     // Production has zero `billing_plans` rows until the seed runs, so this
@@ -244,7 +251,12 @@ function NoSubscription({
           </div>
           <Button
             className="w-full"
-            disabled={isSubscribing}
+            // Not just `startingCycle === cycle`: the other cycle's button
+            // must also go dead while one subscribe is in flight, or a user
+            // can start monthly then click annual and mint two mandates for
+            // two different plans — the same double-charge bug, just across
+            // cycles instead of across clicks on one button.
+            disabled={isSubscribing || !canStartSubscribe(startingCycle)}
             onClick={() => onSubscribe(cycle)}
           >
             {startingCycle === cycle ? 'Starting…' : `Subscribe ${CYCLE_LABEL[cycle].toLowerCase()}`}
