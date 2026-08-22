@@ -18,6 +18,7 @@ const API_ACTIONS = [
   'tenants.list',
   'tenant.read',
   'tenant.plan_changed',
+  'billing.plan_changed',
   'tenant.suspended',
   'tenant.unsuspended',
   'users.list',
@@ -51,6 +52,7 @@ describe('audit action labels', () => {
   it('classifies the consequential actions as writes', () => {
     for (const action of [
       'tenant.plan_changed',
+      'billing.plan_changed',
       'tenant.suspended',
       'tenant.unsuspended',
       'code.blocked',
