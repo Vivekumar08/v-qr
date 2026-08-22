@@ -46,6 +46,9 @@ export const API_CONTRACT: Record<string, AuthRequirement> = {
   'POST /v1/codes': 'session',
   'GET /v1/codes/export': 'session',
   'GET /v1/plan': 'session',
+  'GET /v1/billing': 'session',
+  'POST /v1/billing/subscribe': 'session',
+  'POST /v1/billing/cancel': 'session',
 
   // The operator surface. `session` understates it — these also demand an
   // address on the super-admin allow-list, and answer 404 rather than 403 to

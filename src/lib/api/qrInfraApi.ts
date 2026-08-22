@@ -3,6 +3,8 @@ import type {
   AdminCode,
   AdminTenant,
   AuditEntry,
+  BillingCycle,
+  BillingState,
   CallerSettableStatus,
   Code,
   CodeList,
@@ -50,6 +52,7 @@ export const qrInfraApi = createApi({
     'AdminCodes',
     'AdminAudit',
     'Plan',
+    'Billing',
   ],
 
   endpoints: (builder) => ({
@@ -61,6 +64,31 @@ export const qrInfraApi = createApi({
     plan: builder.query<PlanState, void>({
       query: () => '/v1/plan',
       providesTags: ['Plan'],
+    }),
+
+    billing: builder.query<BillingState, void>({
+      query: () => '/v1/billing',
+      providesTags: ['Billing'],
+    }),
+
+    subscribe: builder.mutation<{ subscription_id: string; key_id: string }, BillingCycle>({
+      query: (cycle) => ({
+        url: '/v1/billing/subscribe',
+        method: 'POST',
+        body: { cycle },
+        // The API replays a repeated key instead of minting a second mandate.
+        // An impatient double-click on Subscribe must never open two
+        // Checkout sessions for the same tenant.
+        headers: { 'idempotency-key': crypto.randomUUID() },
+      }),
+      invalidatesTags: ['Billing'],
+    }),
+
+    cancelSubscription: builder.mutation<{ cancel_at: string | null }, void>({
+      query: () => ({ url: '/v1/billing/cancel', method: 'POST', body: {} }),
+      // Cancelling does not change the plan today — access runs to the period
+      // end — but the billing panel must stop offering to cancel again.
+      invalidatesTags: ['Billing'],
     }),
 
     listMembers: builder.query<{ data: Member[] }, void>({
@@ -359,6 +387,9 @@ export const qrInfraApi = createApi({
 export const {
   useMeQuery,
   usePlanQuery,
+  useBillingQuery,
+  useSubscribeMutation,
+  useCancelSubscriptionMutation,
   useListMembersQuery,
   useChangeMemberRoleMutation,
   useRemoveMemberMutation,

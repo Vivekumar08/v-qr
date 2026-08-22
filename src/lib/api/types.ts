@@ -235,6 +235,32 @@ export interface Impersonation {
 
 export type PlanFeature = 'analytics' | 'export' | 'api_keys';
 
+export type BillingCycle = 'monthly' | 'annual';
+
+/**
+ * Mirrors `GET /v1/billing`.
+ *
+ * Both prices are nullable: they come from the active `billing_plans` rows,
+ * and a deployment where the seed has not run yet has none. That is the
+ * default state in production today, so the console must treat a null price
+ * as "billing not available yet", never as `0` or a display bug.
+ */
+export interface BillingState {
+  /** Public Razorpay key, for Checkout. The secret never leaves the server. */
+  key_id: string;
+  prices: {
+    monthly_paise: number | null;
+    annual_paise: number | null;
+  };
+  subscription: {
+    status: string;
+    cycle: BillingCycle;
+    /** End of the paid period — the renewal date, or when access ends after a cancel. */
+    current_end: string | null;
+    cancel_requested: boolean;
+  } | null;
+}
+
 /** Mirrors `GET /v1/plan`. `null` is unlimited, never a sentinel. */
 export interface PlanState {
   plan: TenantPlan;
